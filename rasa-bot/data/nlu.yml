@@ -1,0 +1,155 @@
+version: "3.1"
+
+nlu:
+- intent: greet
+  examples: |
+    - hola
+    - buenos días
+    - qué tal
+    - hey
+    - buenas
+    - saludos
+    - buen día
+    - qué hubo
+
+- intent: goodbye
+  examples: |
+    - adiós
+    - hasta luego
+    - nos vemos
+    - chao
+    - todo bn
+    - todo bien
+    - hasta pronto
+    - me retiro
+
+- intent: affirm
+  examples: |
+    - sí
+    - claro
+    - por supuesto
+    - correcto
+    - de una
+    - sisas
+    - weno
+    - listo
+    - exacto
+    - afirmativo
+    - va
+    - dale
+
+- intent: deny
+  examples: |
+    - no
+    - nunca
+    - negativo
+    - para nada
+    - nokas
+    - nopis
+    - nop
+    - nada
+    - nunca
+    - incorrecto
+    - negativo
+    - cancelar
+
+- intent: ask_info
+  examples: |
+    - quiero información
+    - me puedes ayudar
+    - necesito datos sobre el producto
+    - cuéntame más
+    - qué servicios ofrecen
+    - necesito ayuda
+    - información por favor
+    - qué hacen
+    
+- intent: solicitar_manifiesto
+  examples: |
+    - quiero expedir un manifiesto
+    - necesito generar un manifiesto
+    - puedes ayudarme a expedir un manifiesto
+    - generar manifiesto
+    - manifiesto
+    - necesito un manifiesto de carga
+    - quiero hacer el manifiesto
+    - documento de transporte
+    - formulario de carga
+    - registro de mercancía
+    - necesito el papel del transporte
+  
+- intent: informar_datos
+  examples: |
+    - flete: 150000, descripción: cajas de herramientas, peso: 500 kg
+      entities:
+        - flete: "150000"
+        - descripcion: "cajas de herramientas"
+        - peso: "500 kg"
+    
+    - El flete es $120.000, llevo electrodomésticos que pesan 250kg
+      entities:
+        - flete: "$120.000"
+        - descripcion: "electrodomésticos"
+        - peso: "250kg"
+    
+    - Tarjeta ABC123, licencia XYZ789, de Bogotá a Medellín
+      entities:
+        - tarjeta: "ABC123"
+        - licencia: "XYZ789"
+        - origen: "Bogotá"
+        - destino: "Medellín"
+    
+    - Cargue: 15/08 8am, descargue: 16/08 5pm
+      entities:
+        - fecha_cargue: "15/08 8am"
+        - fecha_descargue: "16/08 5pm"
+    
+    - Todo junto: Flete $180.000, 300kg de ropa, cargue mañana 9am en Cali, descargue pasado mediodía en Barranquilla, tarjeta T789, licencia L456
+      entities:
+        - flete: "$180.000"
+        - peso: "300kg"
+        - descripcion: "ropa"
+        - fecha_cargue: "mañana 9am"
+        - origen: "Cali"
+        - fecha_descargue: "pasado mediodía"
+        - destino: "Barranquilla"
+        - tarjeta: "T789"
+        - licencia: "L456"
+
+- regex: flete
+  examples: |
+    - flete
+    - valor del flete
+    - costo del transporte
+    - precio
+
+- regex: peso
+  examples: |
+    - peso
+    - kilos
+    - kilogramos
+    - kg
+    - peso total
+
+- lookup: tarjeta
+  examples: |
+    - tarjeta
+    - tarjeta de propiedad
+    - tarjeta vehicular
+    - documento del vehículo
+
+- lookup: licencia
+  examples: |
+    - licencia
+    - licencia de conducción
+    - pase
+    - documento de conducción
+
+- regex: fecha
+  examples: |
+    - fecha
+    - día
+    - hora
+    - \d{1,2}/\d{1,2}
+    - \d{1,2}:\d{2}
+    - (mañana|pasado|hoy)

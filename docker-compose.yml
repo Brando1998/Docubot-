@@ -1,0 +1,159 @@
+version: '3.8'
+
+services:
+  # Base de datos PostgreSQL
+  postgres:
+    image: postgres:15-alpine
+    container_name: docubot-postgres
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-docubot_db}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-abcd1234}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Base de datos MongoDB
+  mongodb:
+    image: mongo:7
+    container_name: docubot-mongo
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_USER:-admin}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD:-password}
+      MONGO_INITDB_DATABASE: ${MONGO_DB:-docubot}
+    volumes:
+      - mongo_data:/data/db
+    ports:
+      - "27017:27017"
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/test --quiet
+      interval: 10s
+      timeout: 10s
+      retries: 5
+
+  # RASA Bot (primero en levantarse)
+  rasa:
+    build:
+      context: ./rasa-bot
+      dockerfile: ../docker/rasa.Dockerfile
+    container_name: docubot-rasa
+    ports:
+      - "5005:5005"
+    volumes:
+      - ./rasa-bot:/app
+    command: >
+      sh -c "
+        rasa train --fixed-model-name current-model &&
+        rasa run --enable-api --cors '*' --debug
+      "
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5005/status"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+  # Playwright Bot (segundo en levantarse)
+  playwright:
+    build:
+      context: ./playwright-bot
+      dockerfile: ../docker/playwright.Dockerfile
+    container_name: docubot-playwright
+    depends_on:
+      rasa:
+        condition: service_healthy
+    ports:
+      - "3001:3001"
+    volumes:
+      - ./playwright-bot:/app
+      - /app/node_modules
+    environment:
+      - NODE_ENV=production
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3001/health"]
+      interval: 15s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  # API en Go (tercero en levantarse)
+  api:
+    build:
+      context: .
+      dockerfile: docker/api.Dockerfile
+    container_name: docubot-api
+    depends_on:
+      postgres:
+        condition: service_healthy
+      mongodb:
+        condition: service_healthy
+      rasa:
+        condition: service_healthy
+      playwright:
+        condition: service_healthy
+    ports:
+      - "${PORT:-8080}:${PORT:-8080}"
+    environment:
+      - PORT=${PORT:-8080}
+      - GIN_MODE=${GIN_MODE:-debug}
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PORT=5432
+      - POSTGRES_USER=${POSTGRES_USER:-postgres}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-abcd1234}
+      - POSTGRES_DB=${POSTGRES_DB:-docubot_db}
+      - MONGO_URI=mongodb://${MONGO_USER:-admin}:${MONGO_PASSWORD:-password}@mongodb:27017/${MONGO_DB:-docubot}?authSource=admin
+      - MONGO_DB=${MONGO_DB:-docubot}
+      - PASETO_SECRET_KEY=${PASETO_SECRET_KEY}
+      - RASA_URL=http://rasa:5005
+      - PLAYWRIGHT_URL=http://playwright:3001
+    volumes:
+      - ./api:/app
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:${PORT:-8080}/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+
+  # Baileys WhatsApp (último en levantarse)
+  baileys:
+    build:
+      context: ./baileys-ws
+      dockerfile: ../docker/baileys.Dockerfile
+    container_name: docubot-baileys
+    depends_on:
+      api:
+        condition: service_healthy
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./baileys-ws:/app
+      - /app/node_modules
+      - baileys_auth:/app/auth
+      - baileys_sessions:/app/src/sessions
+    environment:
+      - NODE_ENV=production
+      - API_URL=http://api:${PORT:-8080}
+      - WS_PORT=3000
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 20s
+      timeout: 10s
+      retries: 3
+      start_period: 45s
+
+volumes:
+  postgres_data:
+  mongo_data:
+  baileys_auth:
+  baileys_sessions:
+
+networks:
+  default:
+    name: docubot-network

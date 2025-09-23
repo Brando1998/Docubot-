@@ -1,0 +1,43 @@
+version: "3.1"
+
+stories:
+- story: Flujo completo de manifiesto
+  steps:
+  - intent: greet
+  - action: utter_greet
+  - intent: solicitar_manifiesto
+  - action: manifiesto_form
+  - active_loop: manifiesto_form
+  - active_loop: null
+  - action: action_submit_manifiesto
+  - action: utter_manifiesto_generado
+  - intent: goodbye
+  - action: utter_goodbye
+
+- story: Usuario proporciona múltiples datos a la vez
+  steps:
+  - intent: solicitar_manifiesto
+  - action: manifiesto_form
+  - intent: informar_datos
+    entities:
+    - flete: "150000"
+    - descripcion: "cajas de electrodomésticos"
+  - action: manifiesto_form
+  - active_loop: null
+  - action: action_submit_manifiesto
+
+- story: Corrección de datos
+  steps:
+  - intent: solicitar_manifiesto
+  - action: manifiesto_form
+  - intent: informar_datos
+    entities:
+    - flete: "120000"
+  - intent: deny  # Usuario indica que el dato es incorrecto
+  - action: utter_pedir_flete
+  - intent: informar_datos
+    entities:
+    - flete: "150000"
+  - action: manifiesto_form
+  - active_loop: null
+  - action: action_submit_manifiesto

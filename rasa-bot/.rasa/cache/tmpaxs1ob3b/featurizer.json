@@ -1,0 +1,77 @@
+{
+  "type": "MaxHistoryTrackerFeaturizer",
+  "state_featurizer": {
+    "action_texts": [],
+    "entity_tag_specs": [],
+    "feature_states": {
+      "intent": {
+        "affirm": 0,
+        "ask_info": 1,
+        "back": 2,
+        "deny": 3,
+        "goodbye": 4,
+        "greet": 5,
+        "informar_datos": 6,
+        "nlu_fallback": 7,
+        "out_of_scope": 8,
+        "restart": 9,
+        "session_start": 10,
+        "solicitar_manifiesto": 11
+      },
+      "action_name": {
+        "action_listen": 0,
+        "action_restart": 1,
+        "action_session_start": 2,
+        "action_default_fallback": 3,
+        "action_deactivate_loop": 4,
+        "action_revert_fallback_events": 5,
+        "action_default_ask_affirmation": 6,
+        "action_default_ask_rephrase": 7,
+        "action_two_stage_fallback": 8,
+        "action_unlikely_intent": 9,
+        "action_back": 10,
+        "...": 11,
+        "action_extract_slots": 12,
+        "action_validate_manifiesto": 13,
+        "action_submit_manifiesto": 14,
+        "action_set_manifiesto_confirmed": 15,
+        "utter_confirmar_manifiesto": 16,
+        "utter_fallback": 17,
+        "utter_goodbye": 18,
+        "utter_greet": 19,
+        "utter_manifiesto_generado": 20,
+        "utter_pedir_descripcion": 21,
+        "utter_pedir_destino": 22,
+        "utter_pedir_fecha_cargue": 23,
+        "utter_pedir_fecha_descargue": 24,
+        "utter_pedir_flete": 25,
+        "utter_pedir_licencia": 26,
+        "utter_pedir_origen": 27,
+        "utter_pedir_peso": 28,
+        "utter_pedir_tarjeta": 29,
+        "utter_preguntar_otro_dato": 30,
+        "manifiesto_form": 31
+      },
+      "entities": {
+        "descripcion": 0,
+        "destino": 1,
+        "fecha_cargue": 2,
+        "fecha_descargue": 3,
+        "flete": 4,
+        "licencia": 5,
+        "origen": 6,
+        "peso": 7,
+        "tarjeta": 8
+      },
+      "slots": {
+        "manifiesto_confirmado_0": 0,
+        "manifiesto_confirmado_1": 1
+      },
+      "active_loop": {
+        "manifiesto_form": 0
+      }
+    }
+  },
+  "remove_duplicates": true,
+  "max_history": 5
+}
