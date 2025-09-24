@@ -1,12 +1,15 @@
-FROM golang:1.22.4
+FROM golang:1.23
 
 WORKDIR /app
 
-COPY go.mod go.sum ./
+# Copiar go.mod y go.sum desde la carpeta api
+COPY api/go.mod api/go.sum ./
 RUN go mod download
 
-COPY . .
+# Copiar todo el código de la API
+COPY api/ .
 
+# Compilar la aplicación
 RUN go build -o server ./cmd/api
 
 EXPOSE ${PORT:-8080}

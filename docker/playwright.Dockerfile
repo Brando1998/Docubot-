@@ -1,4 +1,4 @@
-FROM node:18-alpine
+FROM node:20-alpine
 
 # Instalar dependencias del sistema para Playwright
 RUN apk add --no-cache \
@@ -15,11 +15,11 @@ ENV CHROMIUM_PATH=/usr/bin/chromium-browser
 
 WORKDIR /app
 
-# Copiar package.json y package-lock.json
+# Copiar package.json
 COPY package*.json ./
 
-# Instalar dependencias
-RUN npm ci --only=production
+# Instalar dependencias (usar npm install si no hay package-lock.json)
+RUN npm install --only=production
 
 # Instalar Playwright
 RUN npx playwright install chromium
