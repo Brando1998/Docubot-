@@ -5,117 +5,160 @@ intents:
   - goodbye
   - affirm
   - deny
-  - ask_info
   - solicitar_manifiesto
   - informar_datos
   - nlu_fallback
+
+entities:
+  - flete
+  - descripcion
+  - peso
+  - fecha_cargue
+  - fecha_descargue
+  - tarjeta
+  - licencia
+  - origen
+  - destino
 
 slots:
   flete:
     type: text
     influence_conversation: false
     mappings:
+    - type: from_entity
+      entity: flete
     - type: from_text
-      intent: informar_datos
+      conditions:
+      - active_loop: manifiesto_form
+        requested_slot: flete
 
   descripcion:
     type: text
     influence_conversation: false
     mappings:
+    - type: from_entity
+      entity: descripcion
     - type: from_text
-      intent: informar_datos
+      conditions:
+      - active_loop: manifiesto_form
+        requested_slot: descripcion
 
   peso:
     type: text
     influence_conversation: false
     mappings:
+    - type: from_entity
+      entity: peso
     - type: from_text
-      intent: informar_datos
+      conditions:
+      - active_loop: manifiesto_form
+        requested_slot: peso
 
   fecha_cargue:
     type: text
     influence_conversation: false
     mappings:
+    - type: from_entity
+      entity: fecha_cargue
     - type: from_text
-      intent: informar_datos
+      conditions:
+      - active_loop: manifiesto_form
+        requested_slot: fecha_cargue
 
   fecha_descargue:
     type: text
     influence_conversation: false
     mappings:
+    - type: from_entity
+      entity: fecha_descargue
     - type: from_text
-      intent: informar_datos
+      conditions:
+      - active_loop: manifiesto_form
+        requested_slot: fecha_descargue
 
   tarjeta:
     type: text
     influence_conversation: false
     mappings:
+    - type: from_entity
+      entity: tarjeta
     - type: from_text
-      intent: informar_datos
+      conditions:
+      - active_loop: manifiesto_form
+        requested_slot: tarjeta
 
   licencia:
     type: text
     influence_conversation: false
     mappings:
+    - type: from_entity
+      entity: licencia
     - type: from_text
-      intent: informar_datos
+      conditions:
+      - active_loop: manifiesto_form
+        requested_slot: licencia
 
   origen:
     type: text
     influence_conversation: false
     mappings:
+    - type: from_entity
+      entity: origen
     - type: from_text
-      intent: informar_datos
+      conditions:
+      - active_loop: manifiesto_form
+        requested_slot: origen
 
   destino:
     type: text
     influence_conversation: false
     mappings:
+    - type: from_entity
+      entity: destino
     - type: from_text
-      intent: informar_datos
+      conditions:
+      - active_loop: manifiesto_form
+        requested_slot: destino
 
 responses:
   utter_greet:
-    - text: "¡Hola! Soy tu asistente para generar manifiestos de carga. ¿En qué puedo ayudarte?"
+    - text: "¡Hola! 👋 Soy tu asistente para generar manifiestos de carga. ¿En qué puedo ayudarte?"
   
   utter_goodbye:
-    - text: "¡Hasta luego! Que tengas un buen día."
+    - text: "¡Hasta luego! 👋 Que tengas un buen día."
 
-  utter_pedir_flete:
-    - text: "Por favor indícame el valor del flete (ej: 150000 o $150,000)"
+  utter_ask_flete:
+    - text: "💰 Por favor indícame el valor del flete (ej: 150000 o $150,000)"
 
-  utter_pedir_descripcion:
-    - text: "Descríbeme la carga que transportarás (ej: cajas de electrodomésticos)"
+  utter_ask_descripcion:
+    - text: "📦 Descríbeme la carga que transportarás (ej: cajas de electrodomésticos)"
 
-  utter_pedir_peso:
-    - text: "¿Cuál es el peso total de la carga? (ej: 500 kg)"
+  utter_ask_peso:
+    - text: "⚖️ ¿Cuál es el peso total de la carga? (ej: 500 kg)"
 
-  utter_pedir_fecha_cargue:
-    - text: "¿Cuándo se realizará el cargue? (ej: 15/08/2023 8:00 AM)"
+  utter_ask_fecha_cargue:
+    - text: "📅 ¿Cuándo se realizará el cargue? (ej: 15/08/2023 8:00 AM)"
 
-  utter_pedir_fecha_descargue:
-    - text: "¿Cuándo se realizará la descarga? (ej: 16/08/2023 5:00 PM)"
+  utter_ask_fecha_descargue:
+    - text: "📅 ¿Cuándo se realizará la descarga? (ej: 16/08/2023 5:00 PM)"
 
-  utter_pedir_tarjeta:
-    - text: "Ingresa el número de la tarjeta de propiedad del vehículo"
+  utter_ask_tarjeta:
+    - text: "🚗 Ingresa el número de la tarjeta de propiedad del vehículo"
 
-  utter_pedir_licencia:
-    - text: "Por favor comparte el número de tu licencia de conducción"
+  utter_ask_licencia:
+    - text: "🪪 Por favor comparte el número de tu licencia de conducción"
 
-  utter_pedir_origen:
-    - text: "¿Desde dónde partirá la carga? (ciudad/dirección)"
+  utter_ask_origen:
+    - text: "📍 ¿Desde dónde partirá la carga? (ciudad/dirección)"
 
-  utter_pedir_destino:
-    - text: "¿Cuál es el destino final de la carga? (ciudad/dirección)"
-
-  utter_confirmar_manifiesto:
-    - text: "¿Todo está correcto?"
+  utter_ask_destino:
+    - text: "🎯 ¿Cuál es el destino final de la carga? (ciudad/dirección)"
 
   utter_manifiesto_generado:
-    - text: "¡Manifiesto generado con éxito! En un momento recibirás el documento."
+    - text: "✅ ¡Manifiesto generado con éxito! En un momento recibirás el documento."
   
   utter_fallback:
-    - text: "Lo siento, no entendí eso. ¿Podrías reformularlo?"
+    - text: "🤔 Lo siento, no entendí eso. ¿Podrías reformularlo?"
 
 forms:
   manifiesto_form:
@@ -132,3 +175,5 @@ forms:
 
 actions:
   - action_default_fallback
+  - action_submit_manifiesto
+  - validate_manifiesto_form

@@ -14,30 +14,19 @@ stories:
   - intent: goodbye
   - action: utter_goodbye
 
-- story: Usuario proporciona múltiples datos a la vez
+- story: Usuario proporciona datos durante formulario
   steps:
   - intent: solicitar_manifiesto
   - action: manifiesto_form
+  - active_loop: manifiesto_form
   - intent: informar_datos
-    entities:
-    - flete: "150000"
-    - descripcion: "cajas de electrodomésticos"
   - action: manifiesto_form
   - active_loop: null
   - action: action_submit_manifiesto
 
-- story: Corrección de datos
+- story: Saludo directo a solicitar manifiesto
   steps:
-  - intent: solicitar_manifiesto
+  - intent: greet
+  - action: utter_greet
+  - intent: solicitar_manifiesto  
   - action: manifiesto_form
-  - intent: informar_datos
-    entities:
-    - flete: "120000"
-  - intent: deny  # Usuario indica que el dato es incorrecto
-  - action: utter_pedir_flete
-  - intent: informar_datos
-    entities:
-    - flete: "150000"
-  - action: manifiesto_form
-  - active_loop: null
-  - action: action_submit_manifiesto
