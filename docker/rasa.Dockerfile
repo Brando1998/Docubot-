@@ -31,13 +31,16 @@ RUN echo "🤖 Training Rasa model during build..." && \
     echo "✅ Model training completed!" && \
     ls -la models/
 
-# Copiar el script de inicio (mucho más limpio!)
+# Copiar el script de inicio
 COPY start.sh /app/start.sh
 
-# Configurar permisos
-RUN chown -R 1001:1001 /app && chmod -R 755 /app && chmod +x /app/start.sh
+# ✅ SOLUCIÓN: Configurar permisos ANTES de cambiar de usuario
+# Asegurar que start.sh sea ejecutable y tenga los permisos correctos
+RUN chmod +x /app/start.sh && \
+    chown -R 1001:1001 /app && \
+    chmod -R 755 /app
 
-# Cambiar a usuario no root
+# ⚠️ IMPORTANTE: Cambiar a usuario no root DESPUÉS de configurar permisos
 USER 1001
 
 # Exponer puerto
