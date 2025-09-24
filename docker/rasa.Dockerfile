@@ -27,39 +27,46 @@ RUN test -f domain.yml || (echo "ERROR: domain.yml not found" && exit 1)
 RUN test -f config.yml || (echo "ERROR: config.yml not found" && exit 1)
 RUN test -d data || (echo "ERROR: data directory not found" && exit 1)
 
-# Exponer puerto
-EXPOSE 5005
-
-# Variables de entorno
+# Variables de entorno para el build
 ENV RASA_HOME=/app/.rasa
 ENV SQLALCHEMY_WARN_20=1
 
-# Crear script de inicio como archivo separado
+# ⭐ ENTRENAR EL MODELO DURANTE EL BUILD ⭐
+RUN echo "🤖 Training Rasa model during build..." && \
+    rasa train --fixed-model-name current-model --no-cache && \
+    echo "✅ Model training completed!" && \
+    ls -la models/
+
+# Crear script de inicio simplificado (sin entrenamiento)
 RUN cat > start.sh << 'EOF'
 #!/bin/bash
 set -e
 
 export RASA_HOME=/app/.rasa
 
-echo "Checking if model needs training..."
+echo "🚀 Starting Rasa server with pre-trained model..."
 
+# Verificar que el modelo existe
 if [ ! -f models/current-model.tar.gz ]; then
-    echo "No model found, training..."
-    rasa train --fixed-model-name current-model --no-cache || exit 1
-elif [ data -nt models/current-model.tar.gz ] || [ domain.yml -nt models/current-model.tar.gz ] || [ config.yml -nt models/current-model.tar.gz ]; then
-    echo "Files newer than model, retraining..."
-    rasa train --fixed-model-name current-model --no-cache || exit 1
+    echo "❌ ERROR: Pre-trained model not found!"
+    echo "Available files in models/:"
+    ls -la models/ || echo "No models directory found"
+    exit 1
 fi
 
+echo "✅ Model found: models/current-model.tar.gz"
 echo "Starting Rasa server..."
-exec rasa run --enable-api --cors "*" --model models/current-model.tar.gz
+exec rasa run --enable-api --cors "*" --model models/current-model.tar.gz --port 5005
 EOF
 
 RUN chmod +x start.sh
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=180s --retries=5 \
+# Exponer puerto
+EXPOSE 5005
+
+# Health check (ahora con menos tiempo de espera)
+HEALTHCHECK --interval=15s --timeout=10s --start-period=30s --retries=3 \
     CMD curl -f http://localhost:5005 || exit 1
 
-# Comando por defecto - ejecutar el script con bash
-CMD ["bash", "start.sh"]
+# Comando por defecto - ejecutar directamente con shell
+CMD ["/bin/bash", "/app/start.sh"]

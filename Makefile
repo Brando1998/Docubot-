@@ -26,7 +26,7 @@ up-sequential: ## Levantar servicios secuencialmente (recomendado)
 	@echo "2️⃣ Levantando Rasa..."
 	docker compose -f $(COMPOSE_FILE) up -d rasa
 	@echo "⏳ Esperando Rasa..."
-	sleep 30
+	sleep 15  # Reducido de 30 a 15 segundos (modelo pre-entrenado)
 	@echo "3️⃣ Levantando Playwright..."
 	docker compose -f $(COMPOSE_FILE) up -d playwright
 	@echo "⏳ Esperando Playwright..."
@@ -38,7 +38,7 @@ up-sequential: ## Levantar servicios secuencialmente (recomendado)
 	@echo "5️⃣ Levantando Baileys..."
 	docker compose -f $(COMPOSE_FILE) up -d baileys
 	@echo "✅ Todos los servicios levantados!"
-
+	
 down-local: ## Detener entorno local
 	@echo "🛑 Deteniendo entorno local..."
 	docker compose -f $(COMPOSE_FILE) down

@@ -51,11 +51,10 @@ services:
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:5005"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-      start_period: 180s  # Más tiempo para entrenamiento
-
+      interval: 15s      # Reducido de 30s a 15s
+      timeout: 10s       # Mantenido
+      retries: 3         # Reducido de 5 a 3
+      start_period: 30s  # Reducido de 180s a 30s (modelo ya entrenado)
   # Playwright Bot
   playwright:
     build:
