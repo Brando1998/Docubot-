@@ -31,12 +31,13 @@ RUN echo "🤖 Training Rasa model during build..." && \
     echo "✅ Model training completed!" && \
     ls -la models/
 
-# Copiar el script de inicio
+# ✅ SOLUCIÓN CRÍTICA: Configurar permisos CORRECTAMENTE
+# Usar COPY con --chmod (Docker 20.10+) o RUN chmod después
 COPY start.sh /app/start.sh
 
-# ✅ SOLUCIÓN: Configurar permisos ANTES de cambiar de usuario
-# Asegurar que start.sh sea ejecutable y tenga los permisos correctos
+# ⚠️ ORDEN CRÍTICO: Permisos ANTES de cambiar usuario
 RUN chmod +x /app/start.sh && \
+    chmod 755 /app/start.sh && \
     chown -R 1001:1001 /app && \
     chmod -R 755 /app
 
@@ -50,6 +51,6 @@ EXPOSE 5005
 HEALTHCHECK --interval=15s --timeout=10s --start-period=30s --retries=3 \
     CMD curl -f http://localhost:5005 || exit 1
 
-# Usar ENTRYPOINT y CMD
+# ✅ USAR ENTRYPOINT con array format para evitar problemas de shell
 ENTRYPOINT ["/app/start.sh"]
 CMD []
