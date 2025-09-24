@@ -1,0 +1,67 @@
+# Git
+.git
+.gitignore
+
+# Node modules (muy pesados)
+node_modules
+*/node_modules
+**/node_modules
+
+# Python environments (MUY IMPORTANTE)
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+ENV/
+env.bak
+venv.bak
+.venv/
+.pytest_cache
+.mypy_cache
+
+# Rasa específico
+.rasa/cache
+models/*.tar.gz
+
+# Docker
+Dockerfile*
+docker-compose*
+.dockerignore
+
+# Logs y temporales
+*.log
+logs/
+tmp/
+temp/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDEs
+.vscode
+.idea
+*.swp
+*.swo
+
+# Archivos grandes que no necesitas en build
+*.tar.gz
+*.zip
+*.rar
+*.7z
+*.dmg
+*.iso
+
+# Otros proyectos (si tienes más carpetas)
+api/
+baileys-ws/
+playwright-bot/
+k8s/
+docker/
+
+# Documentation
+README.md
+*.md
