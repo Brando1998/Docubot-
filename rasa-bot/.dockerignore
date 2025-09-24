@@ -1,0 +1,21 @@
+# Entorno virtual Python
+venv/
+.venv/
+env/
+.env/
+
+# Cache de Rasa
+.rasa/cache/
+
+# Python compiled
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+
+# Modelos entrenados (opcional, si no quieres incluirlos)
+models/*.tar.gz
+
+# Git
+.git/
+.gitignore

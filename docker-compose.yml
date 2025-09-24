@@ -10,7 +10,7 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     ports:
-      - "5433:5432"  # Cambio: 5432 -> 5433 en el host
+      - "5433:5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
       interval: 10s
@@ -28,14 +28,14 @@ services:
     volumes:
       - mongo_data:/data/db
     ports:
-      - "27018:27017"  # Cambio: 27017 -> 27018 en el host (por si también tienes MongoDB local)
+      - "27018:27017"
     healthcheck:
       test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/test --quiet
       interval: 10s
       timeout: 10s
       retries: 5
 
-  # RASA Bot (primero en levantarse)
+  # RASA Bot
   rasa:
     build:
       context: ./rasa-bot
@@ -45,14 +45,18 @@ services:
       - "5005:5005"
     volumes:
       - ./rasa-bot:/app
+      - rasa_models:/app/models  # Volumen persistente para modelos
+    environment:
+      - RASA_HOME=/app/.rasa
+    restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:5005"]
       interval: 30s
       timeout: 10s
       retries: 5
-      start_period: 120s  # Más tiempo para que entrene el modelo
+      start_period: 180s  # Más tiempo para entrenamiento
 
-  # Playwright Bot (segundo en levantarse)
+  # Playwright Bot
   playwright:
     build:
       context: ./playwright-bot
@@ -68,6 +72,7 @@ services:
       - /app/node_modules
     environment:
       - NODE_ENV=production
+    restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:3001/health"]
       interval: 15s
@@ -75,7 +80,7 @@ services:
       retries: 3
       start_period: 30s
 
-  # API en Go (tercero en levantarse)
+  # API en Go
   api:
     build:
       context: .
@@ -95,18 +100,19 @@ services:
     environment:
       - PORT=${PORT:-8080}
       - GIN_MODE=${GIN_MODE:-debug}
-      - POSTGRES_HOST=postgres  # Nota: internamente sigue siendo puerto 5432
-      - POSTGRES_PORT=5432      # Puerto interno del contenedor
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PORT=5432
       - POSTGRES_USER=${POSTGRES_USER:-postgres}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-abcd1234}
       - POSTGRES_DB=${POSTGRES_DB:-docubot_db}
       - MONGO_URI=mongodb://${MONGO_USER:-admin}:${MONGO_PASSWORD:-password}@mongodb:27017/${MONGO_DB:-docubot}?authSource=admin
       - MONGO_DB=${MONGO_DB:-docubot}
-      - PASETO_SECRET_KEY=${PASETO_SECRET_KEY}
+      - PASETO_SECRET_KEY=${PASETO_SECRET_KEY:-y7F3q9tPwXkRzZbLmNvQ2s5VpJ8HxYr4KcT6GdA1fUeW0iBoM7nIhS9lOaD5vEj}
       - RASA_URL=http://rasa:5005
       - PLAYWRIGHT_URL=http://playwright:3001
     volumes:
       - ./api:/app
+    restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:${PORT:-8080}/health"]
       interval: 15s
@@ -114,7 +120,7 @@ services:
       retries: 3
       start_period: 30s
 
-  # Baileys WhatsApp (último en levantarse)
+  # Baileys WhatsApp
   baileys:
     build:
       context: ./baileys-ws
@@ -134,6 +140,7 @@ services:
       - NODE_ENV=production
       - API_URL=http://api:${PORT:-8080}
       - WS_PORT=3000
+    restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
       interval: 20s
@@ -144,6 +151,7 @@ services:
 volumes:
   postgres_data:
   mongo_data:
+  rasa_models:  # Nuevo volumen para modelos de Rasa
   baileys_auth:
   baileys_sessions:
 

@@ -10,141 +10,69 @@ intents:
   - informar_datos
   - nlu_fallback
 
-entities:
-  - flete
-  - descripcion
-  - peso
-  - fecha_cargue
-  - fecha_descargue
-  - tarjeta
-  - licencia
-  - origen
-  - destino
-
 slots:
   flete:
-    type: float
+    type: text
     influence_conversation: false
     mappings:
-    - type: from_entity
-      entity: flete
-      intent: informar_datos
     - type: from_text
       intent: informar_datos
-      conditions:
-      - active_loop: manifiesto_form
-        requested_slot: flete
 
   descripcion:
     type: text
     influence_conversation: false
     mappings:
-    - type: from_entity
-      entity: descripcion
-      intent: informar_datos
     - type: from_text
       intent: informar_datos
-      conditions:
-      - active_loop: manifiesto_form
-        requested_slot: descripcion
 
   peso:
-    type: float
+    type: text
     influence_conversation: false
     mappings:
-    - type: from_entity
-      entity: peso
-      intent: informar_datos
     - type: from_text
       intent: informar_datos
-      conditions:
-      - active_loop: manifiesto_form
-        requested_slot: peso
 
   fecha_cargue:
     type: text
     influence_conversation: false
     mappings:
-    - type: from_entity
-      entity: fecha_cargue
-      intent: informar_datos
     - type: from_text
       intent: informar_datos
-      conditions:
-      - active_loop: manifiesto_form
-        requested_slot: fecha_cargue
 
   fecha_descargue:
     type: text
     influence_conversation: false
     mappings:
-    - type: from_entity
-      entity: fecha_descargue
-      intent: informar_datos
     - type: from_text
       intent: informar_datos
-      conditions:
-      - active_loop: manifiesto_form
-        requested_slot: fecha_descargue
 
   tarjeta:
     type: text
     influence_conversation: false
     mappings:
-    - type: from_entity
-      entity: tarjeta
-      intent: informar_datos
     - type: from_text
       intent: informar_datos
-      conditions:
-      - active_loop: manifiesto_form
-        requested_slot: tarjeta
 
   licencia:
     type: text
     influence_conversation: false
     mappings:
-    - type: from_entity
-      entity: licencia
-      intent: informar_datos
     - type: from_text
       intent: informar_datos
-      conditions:
-      - active_loop: manifiesto_form
-        requested_slot: licencia
 
   origen:
     type: text
     influence_conversation: false
     mappings:
-    - type: from_entity
-      entity: origen
-      intent: informar_datos
     - type: from_text
       intent: informar_datos
-      conditions:
-      - active_loop: manifiesto_form
-        requested_slot: origen
 
   destino:
     type: text
     influence_conversation: false
     mappings:
-    - type: from_entity
-      entity: destino
-      intent: informar_datos
     - type: from_text
       intent: informar_datos
-      conditions:
-      - active_loop: manifiesto_form
-        requested_slot: destino
-
-  manifiesto_confirmado:
-    type: bool
-    influence_conversation: true
-    mappings:
-    - type: custom
-      action: action_set_manifiesto_confirmed
 
 responses:
   utter_greet:
@@ -152,8 +80,6 @@ responses:
   
   utter_goodbye:
     - text: "¡Hasta luego! Que tengas un buen día."
-    - text: "¡Adiós! Estamos aquí si nos necesitas de nuevo."
-    - text: "Fue un placer ayudarte. ¡Hasta pronto!"
 
   utter_pedir_flete:
     - text: "Por favor indícame el valor del flete (ej: 150000 o $150,000)"
@@ -183,20 +109,13 @@ responses:
     - text: "¿Cuál es el destino final de la carga? (ciudad/dirección)"
 
   utter_confirmar_manifiesto:
-    - text: "Revisemos los datos:\n\nFlete: {flete}\nDescripción: {descripcion}\nPeso: {peso}\nCargue: {fecha_cargue}\nDescargue: {fecha_descargue}\nTarjeta: {tarjeta}\nLicencia: {licencia}\nOrigen: {origen}\nDestino: {destino}\n\n¿Todo está correcto?"
+    - text: "¿Todo está correcto?"
 
   utter_manifiesto_generado:
     - text: "¡Manifiesto generado con éxito! En un momento recibirás el documento."
-
-  utter_preguntar_otro_dato:
-    - text: "¿Qué otro dato necesitas proporcionar?"
   
   utter_fallback:
     - text: "Lo siento, no entendí eso. ¿Podrías reformularlo?"
-    - text: "No estoy seguro de haber captado tu mensaje. ¿Podrías decirlo de otra forma?"
-    - text: "Mis disculpas, no pude entender. ¿Me lo repites con otras palabras?"
-
-
 
 forms:
   manifiesto_form:
@@ -210,12 +129,6 @@ forms:
       - licencia
       - origen
       - destino
-    ignored_intents:
-      - greet
-      - goodbye
 
 actions:
-  - action_validate_manifiesto
-  - action_submit_manifiesto
   - action_default_fallback
-  - action_set_manifiesto_confirmed
