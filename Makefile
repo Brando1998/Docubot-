@@ -2,7 +2,7 @@
 PROJECT_NAME := docubot
 COMPOSE_FILE := docker-compose.yml
 
-.PHONY: help up-local down-local build-all logs-api logs-rasa logs-playwright logs-baileys clean clean-project clean-all
+.PHONY: help up-local down-local build-all logs-api logs-vue logs-rasa logs-playwright logs-baileys clean clean-project clean-all
 
 help: ## Mostrar ayuda
 	@echo "Comandos disponibles:"
@@ -12,11 +12,11 @@ up-local: ## Levantar entorno local con docker-compose
 	@echo "🚀 Levantando entorno local..."
 	docker compose -f $(COMPOSE_FILE) up --build -d
 	@echo "✅ Entorno levantado. Verificando servicios..."
+	@echo "🎨 Vue Dashboard: http://localhost:3002"
+	@echo "🔧 API Go: http://localhost:8080"
 	@echo "📊 Rasa: http://localhost:5005"
 	@echo "🎭 Playwright: http://localhost:3001"
-	@echo "🔧 API: http://localhost:8080"
 	@echo "💬 Baileys: http://localhost:3000"
-	@echo "📱 Vue Dashboard: http://localhost:3002" 
 
 up-sequential: ## Levantar servicios secuencialmente (recomendado)
 	@echo "🚀 Levantando servicios en orden..."
@@ -27,7 +27,7 @@ up-sequential: ## Levantar servicios secuencialmente (recomendado)
 	@echo "2️⃣ Levantando Rasa..."
 	docker compose -f $(COMPOSE_FILE) up -d rasa
 	@echo "⏳ Esperando Rasa..."
-	sleep 15  # Reducido de 30 a 15 segundos (modelo pre-entrenado)
+	sleep 15
 	@echo "3️⃣ Levantando Playwright..."
 	docker compose -f $(COMPOSE_FILE) up -d playwright
 	@echo "⏳ Esperando Playwright..."
@@ -36,7 +36,11 @@ up-sequential: ## Levantar servicios secuencialmente (recomendado)
 	docker compose -f $(COMPOSE_FILE) up -d api
 	@echo "⏳ Esperando API..."
 	sleep 15
-	@echo "5️⃣ Levantando Baileys..."
+	@echo "5️⃣ Levantando Vue Dashboard..."
+	docker compose -f $(COMPOSE_FILE) up -d vue
+	@echo "⏳ Esperando Vue..."
+	sleep 10
+	@echo "6️⃣ Levantando Baileys..."
 	docker compose -f $(COMPOSE_FILE) up -d baileys
 	@echo "✅ Todos los servicios levantados!"
 	
@@ -48,8 +52,21 @@ build-all: ## Construir todas las imágenes del proyecto
 	@echo "🔨 Construyendo todas las imágenes..."
 	docker compose -f $(COMPOSE_FILE) build
 
+build-api: ## Construir solo imagen de API
+	docker compose -f $(COMPOSE_FILE) build api
+
+build-vue: ## Construir solo imagen de Vue
+	docker compose -f $(COMPOSE_FILE) build vue
+
+build-rasa: ## Construir solo imagen de Rasa
+	docker compose -f $(COMPOSE_FILE) build rasa
+
+# Logs por servicio
 logs-api: ## Ver logs del API
 	docker compose -f $(COMPOSE_FILE) logs -f api
+
+logs-vue: ## Ver logs del Dashboard Vue
+	docker compose -f $(COMPOSE_FILE) logs -f vue
 
 logs-rasa: ## Ver logs de Rasa
 	docker compose -f $(COMPOSE_FILE) logs -f rasa
@@ -60,26 +77,25 @@ logs-playwright: ## Ver logs de Playwright
 logs-baileys: ## Ver logs de Baileys
 	docker compose -f $(COMPOSE_FILE) logs -f baileys
 
-logs-vue: ## Ver logs del Vue Dashboard
-	docker compose -f $(COMPOSE_FILE) logs -f vue-dashboard
-
 logs-all: ## Ver logs de todos los servicios del proyecto
 	docker compose -f $(COMPOSE_FILE) logs -f
 
+# Estado y salud de servicios
 status: ## Verificar estado de servicios del proyecto
 	@echo "📊 Estado de los servicios de $(PROJECT_NAME):"
 	@docker compose -f $(COMPOSE_FILE) ps
 
 health-check: ## Verificar salud de servicios del proyecto
 	@echo "🏥 Verificando salud de servicios..."
-	@echo -n "Postgres: " && (curl -f http://localhost:5433 2>/dev/null && echo "✅" || echo "❌")
-	@echo -n "MongoDB: " && (curl -f http://localhost:27018 2>/dev/null && echo "✅" || echo "❌")
+	@echo -n "Postgres: " && (pg_isready -h localhost -p 5432 -U postgres 2>/dev/null && echo "✅" || echo "❌")
+	@echo -n "MongoDB: " && (curl -f http://localhost:27017 2>/dev/null && echo "✅" || echo "❌")
 	@echo -n "Rasa: " && (curl -f http://localhost:5005/status 2>/dev/null && echo "✅" || echo "❌")
 	@echo -n "Playwright: " && (curl -f http://localhost:3001/health 2>/dev/null && echo "✅" || echo "❌")
+	@echo -n "Vue Dashboard: " && (curl -f http://localhost:3002/health 2>/dev/null && echo "✅" || echo "❌")
 	@echo -n "API: " && (curl -f http://localhost:8080/health 2>/dev/null && echo "✅" || echo "❌")
 	@echo -n "Baileys: " && (curl -f http://localhost:3000/health 2>/dev/null && echo "✅" || echo "❌")
-	@echo -n "Vue Dashboard: " && (curl -f http://localhost:3002/health 2>/dev/null && echo "✅" || echo "❌")
 
+# Limpieza
 clean: clean-project ## Limpiar SOLO los contenedores, imágenes y volúmenes de este proyecto
 
 clean-project: ## Limpiar contenedores, imágenes y volúmenes específicos del proyecto
@@ -87,7 +103,7 @@ clean-project: ## Limpiar contenedores, imágenes y volúmenes específicos del 
 	@echo "⏹️  Deteniendo contenedores del proyecto..."
 	-docker compose -f $(COMPOSE_FILE) down -v --remove-orphans 2>/dev/null
 	@echo "🗑️  Eliminando contenedores del proyecto..."
-	-docker container rm -f $(PROJECT_NAME)-postgres $(PROJECT_NAME)-mongo $(PROJECT_NAME)-rasa $(PROJECT_NAME)-playwright $(PROJECT_NAME)-api $(PROJECT_NAME)-baileys 2>/dev/null || true
+	-docker container rm -f $(PROJECT_NAME)-postgres $(PROJECT_NAME)-mongo $(PROJECT_NAME)-rasa $(PROJECT_NAME)-playwright $(PROJECT_NAME)-vue $(PROJECT_NAME)-api $(PROJECT_NAME)-baileys 2>/dev/null || true
 	@echo "🖼️  Eliminando imágenes del proyecto..."
 	-docker image rm -f $$(docker images --filter "reference=$(PROJECT_NAME)*" -q) 2>/dev/null || true
 	-docker image rm -f $$(docker images --filter "reference=docubot*" -q) 2>/dev/null || true
@@ -109,6 +125,7 @@ clean-all: ## ⚠️  PELIGROSO: Limpiar TODO el sistema Docker (usar con cuidad
 	docker system prune -af --volumes
 	@echo "✅ Limpieza completa del sistema"
 
+# Reinicio de servicios
 restart: ## Reiniciar todos los servicios del proyecto
 	@echo "🔄 Reiniciando servicios del proyecto..."
 	docker compose -f $(COMPOSE_FILE) restart
@@ -116,14 +133,14 @@ restart: ## Reiniciar todos los servicios del proyecto
 restart-api: ## Reiniciar solo la API
 	docker compose -f $(COMPOSE_FILE) restart api
 
+restart-vue: ## Reiniciar solo Vue Dashboard
+	docker compose -f $(COMPOSE_FILE) restart vue
+
 restart-rasa: ## Reiniciar solo Rasa
 	docker compose -f $(COMPOSE_FILE) restart rasa
 
 restart-baileys: ## Reiniciar solo Baileys
 	docker compose -f $(COMPOSE_FILE) restart baileys
-
-restart-vue: ## Reiniciar solo el Vue Dashboard
-	docker compose -f $(COMPOSE_FILE) restart vue-dashboard
 
 # Comandos de desarrollo
 dev-logs: ## Ver logs en tiempo real de todos los servicios
@@ -132,8 +149,24 @@ dev-logs: ## Ver logs en tiempo real de todos los servicios
 dev-shell-api: ## Abrir shell en el contenedor de la API
 	docker compose -f $(COMPOSE_FILE) exec api /bin/sh
 
+dev-shell-vue: ## Abrir shell en el contenedor de Vue
+	docker compose -f $(COMPOSE_FILE) exec vue /bin/sh
+
 dev-shell-rasa: ## Abrir shell en el contenedor de Rasa
 	docker compose -f $(COMPOSE_FILE) exec rasa /bin/bash
+
+# Comandos específicos de Vue
+vue-dev: ## Ejecutar Vue en modo desarrollo (local)
+	@echo "🎨 Iniciando Vue en modo desarrollo..."
+	cd vue-dashboard && npm run dev
+
+vue-build: ## Compilar Vue para producción (local)
+	@echo "🔨 Compilando Vue para producción..."
+	cd vue-dashboard && npm run build
+
+vue-install: ## Instalar dependencias de Vue (local)
+	@echo "📦 Instalando dependencias de Vue..."
+	cd vue-dashboard && npm install
 
 # Comandos Kubernetes
 k8s-deploy: ## Desplegar en Kubernetes
@@ -160,3 +193,16 @@ show-images: ## Mostrar solo las imágenes de este proyecto
 show-volumes: ## Mostrar solo los volúmenes de este proyecto
 	@echo "💾 Volúmenes del proyecto $(PROJECT_NAME):"
 	@docker volume ls --filter "name=$(PROJECT_NAME)" --format "table {{.Name}}\t{{.Size}}"
+
+# Comandos útiles para desarrollo
+open-urls: ## Abrir todas las URLs del proyecto en el navegador
+	@echo "🌐 Abriendo URLs del proyecto..."
+	@which open >/dev/null && (open http://localhost:3002 && open http://localhost:8080/health && open http://localhost:5005/status) || echo "Comando 'open' no disponible. URLs: http://localhost:3002 http://localhost:8080/health http://localhost:5005/status"
+
+check-ports: ## Verificar qué puertos están en uso
+	@echo "🔍 Verificando puertos del proyecto..."
+	@echo "Puerto 3002 (Vue):" && (lsof -i :3002 2>/dev/null || echo "  Libre")
+	@echo "Puerto 8080 (API):" && (lsof -i :8080 2>/dev/null || echo "  Libre")
+	@echo "Puerto 5005 (Rasa):" && (lsof -i :5005 2>/dev/null || echo "  Libre")
+	@echo "Puerto 3001 (Playwright):" && (lsof -i :3001 2>/dev/null || echo "  Libre")
+	@echo "Puerto 3000 (Baileys):" && (lsof -i :3000 2>/dev/null || echo "  Libre")

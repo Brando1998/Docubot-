@@ -1,88 +1,121 @@
 services:
-  # Base de datos PostgreSQL
+  # PostgreSQL Database
   postgres:
     image: postgres:15-alpine
     container_name: docubot-postgres
     environment:
-      POSTGRES_DB: ${POSTGRES_DB:-docubot_db}
-      POSTGRES_USER: ${POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-abcd1234}
+      - POSTGRES_USER=${POSTGRES_USER:-postgres}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-abcd1234}
+      - POSTGRES_DB=${POSTGRES_DB:-docubot_db}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     ports:
-      - "5433:5432"
+      - "5432:5432"
+    restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-docubot_db}"]
       interval: 10s
       timeout: 5s
       retries: 5
 
-  # Base de datos MongoDB
+  # MongoDB Database
   mongodb:
-    image: mongo:7
+    image: mongo:7-jammy
     container_name: docubot-mongo
     environment:
-      MONGO_INITDB_ROOT_USERNAME: ${MONGO_USER:-admin}
-      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD:-password}
-      MONGO_INITDB_DATABASE: ${MONGO_DB:-docubot}
+      - MONGO_INITDB_ROOT_USERNAME=${MONGO_USER:-admin}
+      - MONGO_INITDB_ROOT_PASSWORD=${MONGO_PASSWORD:-password}
+      - MONGO_INITDB_DATABASE=${MONGO_DB:-docubot}
     volumes:
       - mongo_data:/data/db
     ports:
-      - "27018:27017"
+      - "27017:27017"
+    restart: unless-stopped
     healthcheck:
       test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/test --quiet
       interval: 10s
       timeout: 10s
       retries: 5
+      start_period: 40s
 
-  # RASA Bot
+  # Rasa Bot
   rasa:
     build:
       context: ./rasa-bot
       dockerfile: ../docker/rasa.Dockerfile
     container_name: docubot-rasa
+    depends_on:
+      postgres:
+        condition: service_healthy
+      mongodb:
+        condition: service_healthy
     ports:
       - "5005:5005"
+      - "5055:5055"  # Action server
     volumes:
       - ./rasa-bot:/app
-      - rasa_models:/app/models  # Volumen persistente para modelos
+      - rasa_models:/app/models
     environment:
-      - RASA_HOME=/app/.rasa
+      - RASA_MODEL_SERVER=http://localhost:5005
+      - ACTION_ENDPOINT_URL=http://localhost:5055/webhook
     restart: unless-stopped
+    command: >
+      bash -c "
+        rasa run actions --port 5055 --debug &
+        rasa run --enable-api --cors '*' --port 5005 --debug
+      "
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:5005"]
-      interval: 15s      # Reducido de 30s a 15s
-      timeout: 10s       # Mantenido
-      retries: 3         # Reducido de 5 a 3
-      start_period: 30s  # Reducido de 180s a 30s (modelo ya entrenado)
+      test: ["CMD", "curl", "-f", "http://localhost:5005/status"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
   # Playwright Bot
   playwright:
     build:
       context: ./playwright-bot
       dockerfile: ../docker/playwright.Dockerfile
     container_name: docubot-playwright
-    depends_on:
-      rasa:
-        condition: service_healthy
     ports:
       - "3001:3001"
-    volumes:
-      - ./playwright-bot:/app
-      - /app/node_modules
     environment:
       - NODE_ENV=production
+      - PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
     restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:3001/health || exit 1"]
       interval: 15s
-      timeout: 10s
+      timeout: 5s
       retries: 3
       start_period: 30s
 
-  # API en Go
+  # Vue.js Dashboard
+  vue:
+    build:
+      context: ./vue-dashboard
+      dockerfile: ../docker/vue.Dockerfile
+    container_name: docubot-vue
+    depends_on:
+      api:
+        condition: service_healthy
+    ports:
+      - "3002:3002"
+    environment:
+      - NODE_ENV=production
+      - VUE_APP_API_URL=http://api:8080
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3002/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+
+  # API Backend (Go)
   api:
     build:
-      context: .  # ← CORREGIDO: debe ser el directorio raíz
+      context: .
       dockerfile: docker/api.Dockerfile
     container_name: docubot-api
     depends_on:
@@ -95,9 +128,9 @@ services:
       playwright:
         condition: service_healthy
     ports:
-      - "${PORT:-8080}:${PORT:-8080}"
+      - "8080:8080"
     environment:
-      - PORT=${PORT:-8080}
+      - PORT=8080
       - GIN_MODE=${GIN_MODE:-debug}
       - POSTGRES_HOST=postgres
       - POSTGRES_PORT=5432
@@ -111,12 +144,12 @@ services:
       - PLAYWRIGHT_URL=http://playwright:3001
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:${PORT:-8080}/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
       interval: 15s
       timeout: 5s
       retries: 3
       start_period: 30s
-  
+
   # Baileys WhatsApp
   baileys:
     build:
@@ -135,7 +168,7 @@ services:
       - baileys_sessions:/app/src/sessions
     environment:
       - NODE_ENV=production
-      - API_URL=http://api:${PORT:-8080}
+      - API_URL=http://api:8080
       - WS_PORT=3000
     restart: unless-stopped
     healthcheck:
@@ -145,32 +178,10 @@ services:
       retries: 3
       start_period: 45s
 
-  # Vue Dashboard
-  vue-dashboard:
-    build:
-      context: ./vue-dashboard
-      dockerfile: ../docker/vue.Dockerfile
-    container_name: docubot-vue-dashboard
-    depends_on:
-      api:
-        condition: service_healthy
-    ports:
-      - "3002:3002"
-    environment:
-      - NODE_ENV=production
-      - VITE_API_URL=http://localhost:8080
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:3002/health || exit 1"]
-      interval: 15s
-      timeout: 10s
-      retries: 3
-      start_period: 30s
-      
 volumes:
   postgres_data:
   mongo_data:
-  rasa_models:  # Nuevo volumen para modelos de Rasa
+  rasa_models:
   baileys_auth:
   baileys_sessions:
 
