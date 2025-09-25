@@ -1,3 +1,4 @@
+import "dotenv/config";
 // Modificar baileys-ws/src/index.ts para incluir el servidor de salud
 
 import { makeWASocket, fetchLatestBaileysVersion } from "@whiskeysockets/baileys";

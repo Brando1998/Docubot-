@@ -82,7 +82,7 @@ services:
   # API en Go
   api:
     build:
-      context: .
+      context: .  # ← CORREGIDO: debe ser el directorio raíz
       dockerfile: docker/api.Dockerfile
     container_name: docubot-api
     depends_on:
@@ -109,8 +109,6 @@ services:
       - PASETO_SECRET_KEY=${PASETO_SECRET_KEY:-y7F3q9tPwXkRzZbLmNvQ2s5VpJ8HxYr4KcT6GdA1fUeW0iBoM7nIhS9lOaD5vEj}
       - RASA_URL=http://rasa:5005
       - PLAYWRIGHT_URL=http://playwright:3001
-    volumes:
-      - ./api:/app
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:${PORT:-8080}/health"]
@@ -118,7 +116,6 @@ services:
       timeout: 5s
       retries: 3
       start_period: 30s
-
   # Baileys WhatsApp
   baileys:
     build:

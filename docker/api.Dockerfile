@@ -1,4 +1,4 @@
-# Multi-stage build para resolver problemas de inconsistencia
+# ===== STAGE 1: BUILDER =====
 FROM golang:1.23-alpine AS builder
 
 # Instalar git para go mod download
@@ -13,35 +13,37 @@ RUN go mod download
 # Copiar código fuente
 COPY api/ .
 
-# Build estático
-RUN CGO_ENABLED=0 GOOS=linux go build -a -ldflags="-w -s" -o server ./cmd/api
+# Compilación estática (amd64)
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
+    go build -a -installsuffix cgo -ldflags="-w -s" -o server ./cmd/api
 
 # Verificar que se construyó
-RUN ls -la server && file server
+RUN ls -la /build/server
 
-# ===== STAGE FINAL =====
+
+# ===== STAGE 2: FINAL =====
 FROM alpine:latest
 
-# Instalar dependencias de runtime
+# Instalar dependencias mínimas de runtime
 RUN apk --no-cache add ca-certificates curl tzdata
 
+# Crear directorio de la app
 WORKDIR /app
 
 # Copiar binario desde builder
-COPY --from=builder /build/server ./server
+COPY --from=builder /build/server /app/server
 
-# Hacer ejecutable (por si acaso)
-RUN chmod +x ./server
+# Dar permisos de ejecución
+RUN chmod +x /app/server
 
-# Verificar que está ahí
-RUN ls -la ./server && file ./server
-
-# Usuario no-root (opcional, puedes comentar si causa problemas)
+# Crear usuario no root (opcional)
 RUN addgroup -g 1001 -S appgroup && \
     adduser -S appuser -u 1001 -G appgroup && \
-    chown appuser:appgroup ./server
+    chown appuser:appgroup /app/server
 USER appuser
 
+# Exponer puerto
 EXPOSE 8080
 
-CMD ["./server"]
+# Ejecutar binario
+CMD ["/app/server"]
