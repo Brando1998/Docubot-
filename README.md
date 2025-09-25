@@ -1,428 +1,276 @@
-# 📦 Docubot
+# 🤖 Docubot - Arquitectura y Flujo de Integración
 
-Docubot es un ecosistema modular para automatizar procesos documentales en el sector transporte, combinando:
+## 📋 Descripción General
 
-- Backend en **Go**
-- Dashboard frontend en **Vue.js** con TypeScript
-- Bots conversacionales en **Rasa**
-- Automatización web con **Playwright**
-- Comunicación por WhatsApp con **Baileys**
-
----
-
-## 🚀 Características
-
-- 🔧 **API** RESTful en Go con PostgreSQL y MongoDB  
-- 🎨 **Dashboard Vue.js** con TypeScript y Vite para gestión administrativa
-- 🤖 **Chatbot** en Rasa con respuestas dinámicas y acciones personalizadas  
-- 🧠 **Automatización web** en Node.js usando Playwright  
-- 💬 **Integración WhatsApp** usando Baileys (no oficial)  
-- ☸️ **Despliegue en Kubernetes** y local con Docker Compose  
-
----
-
-## 📁 Estructura del Proyecto
-
-```plaintext
-.
-├── api/
-│   ├── cmd/api/
-│   ├── config/
-│   ├── controllers/
-│   ├── databases/
-│   ├── docs/
-│   ├── middleware/
-│   ├── mocks/
-│   ├── models/
-│   ├── repositories/
-│   ├── routes/
-│   └── services/
-│
-├── vue-dashboard/          # 🎨 Dashboard Vue.js con TypeScript
-│   ├── src/
-│   │   ├── components/
-│   │   ├── assets/
-│   │   └── main.ts
-│   ├── public/
-│   ├── package.json
-│   ├── vite.config.ts
-│   └── tsconfig*.json
-│
-├── baileys-ws/
-│   ├── auth/               # ⚠️ Contiene credenciales/sesiones (ignorar en git)
-│   ├── src/
-│   │   ├── handlers/
-│   │   ├── sessions/       # ⚠️ Contiene session-*.json (ignorar en git)
-│   │   └── websocket/
-│   └── package.json
-│
-├── docker/
-│   ├── api.Dockerfile
-│   ├── vue.Dockerfile      # 🎨 Dockerfile para Vue dashboard
-│   └── baileys.Dockerfile
-│
-├── k8s/
-│   ├── configmaps/
-│   ├── deployments/
-│   ├── secrets/
-│   └── services/
-│
-├── playwright-bot/
-│
-├── rasa-bot/
-│   ├── actions/
-│   ├── data/
-│   ├── models/             # ⚠️ Contiene modelos .tar.gz (ignorar en git)
-│   └── requirements.txt
-│
-├── docker-compose.yml
-├── Makefile
-├── README.md
-└── structure.md
-```
-
----
-
-## 🖥️ Requisitos
-
-- Docker + Docker Compose  
-- Make (opcional)  
-- Kubernetes (Minikube o clúster compatible)  
-- `kubectl` configurado  
-- Git  
-- Node.js 20+ (para desarrollo local del dashboard Vue)
-
----
-
-## 📥 Clonar el Repositorio
-
-```bash
-git clone https://github.com/tuusuario/docubot.git
-cd docubot
-```
-
----
-
-## ▶️ Ejecutar en Local (Docker Compose)
-
-### 1. Configura variables de entorno
-```bash
-# Copia las variables de entorno
-cp .env.example .env
-
-# Edita .env con tus valores específicos
-nano .env
-```
-
-### 2. Levanta el entorno local
-```bash
-# Opción 1: Despliegue secuencial (recomendado)
-make up-sequential
-
-# Opción 2: Despliegue completo 
-make up-local
-```
-
-Esto iniciará:
-
-- **Vue Dashboard** → http://localhost:3002  
-- **API Go** → http://localhost:8080  
-- **Rasa** → http://localhost:5005  
-- **Playwright** (Node.js) → http://localhost:3001  
-- **Baileys WS** (WhatsApp) → http://localhost:3000  
-- **PostgreSQL** → localhost:5432  
-- **MongoDB** → localhost:27017  
-
----
-
-## 🌐 URLs de Acceso
-
-| Servicio | URL | Descripción |
-|----------|-----|-------------|
-| **Dashboard Vue** | http://localhost:3002 | Interface administrativa |
-| **API Go** | http://localhost:8080/health | Backend principal |
-| **Rasa** | http://localhost:5005/status | Motor de chatbot |
-| **Playwright** | http://localhost:3001/health | Automatización web |
-| **Baileys** | http://localhost:3000/health | Gateway WhatsApp |
-
----
-
-## ☸️ Verificar Estado
-
-```bash
-# Ver estado de contenedores
-make status
-
-# Ver logs en tiempo real
-make logs-all
-
-# Verificar salud de servicios
-make health-check
-```
-
----
-
-## 🛠️ Comandos Útiles (Makefile)
-
-### Contenedores
-```bash
-make up-local         # Levanta entorno local con docker-compose
-make up-sequential    # Despliegue secuencial (recomendado)
-make down-local       # Detiene el entorno local
-make build-all        # Construir todas las imágenes del proyecto
-```
-
-### Logs
-```bash
-make logs-api         # Logs del backend API
-make logs-vue         # Logs del dashboard Vue
-make logs-rasa        # Logs de Rasa
-make logs-playwright  # Logs de Playwright
-make logs-baileys     # Logs de Baileys
-make logs-all         # Logs de todos los servicios
-```
-
-### Desarrollo
-```bash
-make dev-logs         # Logs en tiempo real de todos los servicios
-make dev-shell-api    # Shell en contenedor API
-make dev-shell-vue    # Shell en contenedor Vue
-make restart-vue      # Reiniciar solo Vue
-make restart-api      # Reiniciar solo API
-```
-
----
-
-## 🎨 Desarrollo del Dashboard Vue
-
-### Desarrollo local (fuera de Docker)
-```bash
-cd vue-dashboard
-
-# Instalar dependencias
-npm install
-
-# Servidor de desarrollo
-npm run dev
-
-# Compilar para producción
-npm run build
-```
-
-### Desarrollo con Docker
-```bash
-# Build y ejecutar contenedor Vue
-make build-vue
-make up-vue
-
-# Ver logs de Vue
-make logs-vue
-```
-
----
-
-## 🧪 Pruebas y Endpoints
-
-### API Endpoints
-- **Health Check**: http://localhost:8080/health  
-- **Documentation**: http://localhost:8080/swagger/index.html  
-
-### Chatbot
-- **Rasa Webhook**: http://localhost:5005/webhooks/rest/webhook  
-- **WhatsApp**: Se conecta automáticamente si está autenticado  
-
-### Frontend
-- **Dashboard**: http://localhost:3002  
-- **Health Check**: http://localhost:3002/health  
-
----
-
-## 🧩 Flujo de Integración
-
-```plaintext
-[Usuario Web] ↔ [Vue Dashboard] ↔ [API Go] ↔ [PostgreSQL/MongoDB]
-                                      ↓
-[Usuario WhatsApp] ↔ [Baileys-WS] ↔ [Rasa Bot] ↔ [Playwright Bot]
-```
-
----
+Docubot es un ecosistema de chatbot modular que combina múltiples tecnologías para automatizar procesos documentales en el sector transporte, principalmente a través de WhatsApp.
 
 ## 🏗️ Arquitectura de Servicios
 
-### Frontend (Vue.js)
-- **Tecnología**: Vue 3 + TypeScript + Vite
-- **Puerto**: 3002
-- **Servidor**: Nginx (producción)
-- **Hot Reload**: Disponible en desarrollo
+### Componentes Principales
 
-### Backend (Go)
-- **Puerto**: 8080
-- **Databases**: PostgreSQL + MongoDB
-- **Documentation**: Swagger/OpenAPI
+| Servicio | Tecnología | Puerto | Descripción |
+|----------|------------|--------|-------------|
+| **Vue Dashboard** | Vue 3 + TypeScript + Vite | 3002 | Frontend administrativo para gestión y configuración |
+| **API Backend** | Go + Gin | 8080 | Hub central de comunicación y lógica de negocio |
+| **Baileys Gateway** | Node.js + Baileys | 3000 | Conexión directa con WhatsApp Web |
+| **Rasa Bot** | Python + Rasa | 5005 | Motor de NLP y gestión de conversaciones |
+| **Playwright Actions** | Node.js + Playwright | 3001 | Automatización web para acciones específicas |
+| **PostgreSQL** | PostgreSQL | 5432 | Base de datos principal |
+| **MongoDB** | MongoDB | 27017 | Base de datos para documentos y logs |
 
-### Chatbot (Rasa)
-- **Puerto**: 5005  
-- **NLU**: Procesamiento de lenguaje natural
-- **Actions**: Acciones personalizadas con Playwright
+## 🔄 Flujo de Comunicación Detallado
 
-### WhatsApp Integration
-- **Baileys**: Puerto 3000
-- **WebSocket**: Comunicación en tiempo real
+### 1. Flujo de Configuración (Dashboard Web)
 
----
-
-## 📚 Documentación API
-
-```bash
-# Generar documentación Swagger
-cd api
-swag init --output ./docs --dir ./cmd/api,./controllers
+```plaintext
+[Administrador] 
+    ↓ (HTTP/REST)
+[Vue Dashboard :3002]
+    ↓ (API calls)
+[API Go :8080]
+    ↓ (queries)
+[PostgreSQL/MongoDB]
 ```
 
----
+**Proceso:**
+1. El administrador accede al dashboard Vue
+2. Puede escanear el código QR para vincular WhatsApp
+3. Configura respuestas del bot, usuarios, etc.
+4. Toda la configuración se almacena en las bases de datos
 
-## ✅ Tests
+### 2. Flujo Principal de Mensajería (WhatsApp ↔ Chatbot)
 
-```bash
-# Tests del backend
-cd api
-go test ./controllers
-
-# Tests del frontend (cuando estén implementados)
-cd vue-dashboard
-npm test
+```plaintext
+[Usuario WhatsApp]
+    ↓ (mensaje texto/multimedia)
+[Baileys :3000] ──────────── WebSocket ──────────── [API Go :8080]
+    ↑ (respuesta)                                        ↓ (análisis)
+                                                    [Rasa :5005]
+                                                         ↓ (acciones)
+                                                    [Playwright :3001]
+                                                         ↓ (resultados)
+                                                    [Websites Externos]
 ```
 
----
+**Proceso paso a paso:**
 
-## 🐳 Docker
+#### A. Recepción de Mensaje
+1. Usuario envía mensaje por WhatsApp
+2. Baileys recibe el mensaje y lo procesa
+3. Baileys envía via **WebSocket** a la API Go:
+   ```json
+   {
+     "phone": "573001234567@s.whatsapp.net",
+     "message": "Necesito un manifiesto",
+     "botNumber": "573009876543@s.whatsapp.net"
+   }
+   ```
 
-### Imágenes disponibles
-- `docubot-api`: Backend en Go
-- `docubot-vue`: Dashboard Vue.js
-- `docubot-rasa`: Chatbot Rasa
-- `docubot-playwright`: Automatización web
-- `docubot-baileys`: Gateway WhatsApp
+#### B. Procesamiento Central
+4. API Go recibe el mensaje via WebSocket
+5. API procesa y guarda en base de datos (cliente, bot, mensaje)
+6. API envía mensaje a Rasa para análisis NLP:
+   ```json
+   {
+     "sender": "573001234567",
+     "message": "Necesito un manifiesto"
+   }
+   ```
 
-### Comandos Docker útiles
-```bash
-# Ver contenedores del proyecto
-make show-containers
+#### C. Análisis y Respuesta
+7. Rasa analiza el mensaje y determina:
+   - **Intent**: solicitar_manifiesto
+   - **Entities**: tipo de documento
+   - **Action**: si requiere ejecutar acción especial
+8. Rasa puede:
+   - Devolver respuesta directa, O
+   - Ejecutar acción personalizada con Playwright
+9. Si requiere acción, Rasa llama a Playwright para automatizar websites
+10. Rasa devuelve respuesta a la API:
+    ```json
+    [
+      {
+        "recipient_id": "573001234567",
+        "text": "Perfecto, te ayudo con el manifiesto. ¿Para qué ruta necesitas el documento?"
+      }
+    ]
+    ```
 
-# Ver imágenes del proyecto  
-make show-images
+#### D. Envío de Respuesta
+11. API Go procesa la respuesta de Rasa
+12. API guarda la respuesta en base de datos
+13. API envía via **WebSocket** a Baileys:
+    ```json
+    {
+      "to": "573001234567@s.whatsapp.net",
+      "message": "Perfecto, te ayudo con el manifiesto..."
+    }
+    ```
+14. Baileys envía el mensaje de vuelta al usuario por WhatsApp
 
-# Limpiar recursos del proyecto
-make clean-project
+## 🔌 Detalles de Integración
+
+### Comunicación WebSocket (Baileys ↔ API)
+
+**Baileys → API:**
+```typescript
+// baileys-ws/src/handlers/messageHandler.ts
+backendWS.send(JSON.stringify({
+    phone: from,
+    message: text,
+    botNumber
+}));
 ```
 
----
-
-## ☸️ Kubernetes
-
-```bash
-# Desplegar en Kubernetes
-make k8s-deploy
-
-# Eliminar despliegue
-make k8s-delete
+**API → Baileys:**
+```go
+// api/controllers/conversation.go
+hub.SendToBot(msg.BotNumber, map[string]interface{}{
+    "to":      msg.Phone,
+    "message": response.Text,
+})
 ```
 
----
+### Comunicación HTTP (API ↔ Rasa)
 
-## 📝 Estructura de Desarrollo
+**API → Rasa:**
+```go
+// POST http://rasa:5005/webhooks/rest/webhook
+{
+    "sender": "user_id",
+    "message": "texto del mensaje"
+}
+```
 
-### Agregar nuevas funcionalidades
+**Rasa → API:**
+```json
+[
+    {
+        "recipient_id": "user_id", 
+        "text": "respuesta del bot"
+    }
+]
+```
 
-#### Frontend (Vue)
-1. Desarrollar en `vue-dashboard/src/`
-2. Usar TypeScript para type safety
-3. Compilar con `npm run build`
-4. Testear con Docker: `make build-vue && make up-vue`
+### Acciones Personalizadas (Rasa ↔ Playwright)
 
-#### Backend (API)
-1. Agregar endpoints en `api/controllers/`
-2. Actualizar modelos en `api/models/`
-3. Documentar con Swagger
-4. Testear: `go test ./controllers`
+Rasa puede ejecutar acciones personalizadas definidas en `actions/actions.py`:
 
-#### Chatbot (Rasa)
-1. Agregar intents en `rasa-bot/data/nlu.yml`
-2. Definir stories en `rasa-bot/data/stories.yml`
-3. Implementar acciones en `rasa-bot/actions/actions.py`
-4. Reentrenar: `rasa train`
+```python
+# rasa-bot/actions/actions.py
+class ActionExpedirManifiesto(Action):
+    def run(self, dispatcher, tracker, domain):
+        # Llama a Playwright para automatizar proceso
+        result = call_playwright_action("expedir_manifiesto", datos)
+        dispatcher.utter_message(text=f"Manifiesto generado: {result}")
+        return []
+```
 
----
+## 📊 Flujo de Datos
 
-## 🔧 Configuración
+### Base de Datos
+- **PostgreSQL**: Usuarios, bots, mensajes, configuraciones
+- **MongoDB**: Documentos generados, logs, archivos multimedia
 
-### Variables de Entorno Principales
+### Estados de Sesión
+- **Baileys**: Mantiene sesión activa de WhatsApp
+- **Rasa**: Mantiene contexto de conversación por usuario
+- **API**: Gestiona estados de todas las sesiones
 
+## 🚀 Casos de Uso Principales
+
+### 1. Escaneo de QR (Configuración Inicial)
+```plaintext
+[Admin] → [Vue Dashboard] → [API] → [Baileys] → [WhatsApp Web]
+```
+
+### 2. Consulta Simple
+```plaintext
+[Usuario] → [WhatsApp] → [Baileys] → [API] → [Rasa] → respuesta directa
+```
+
+### 3. Generación de Documento
+```plaintext
+[Usuario] → [WhatsApp] → [Baileys] → [API] → [Rasa] → [Playwright] → [Website] → documento generado
+```
+
+## ⚙️ Configuración de Servicios
+
+### Variables de Entorno Críticas
 ```bash
-# Puertos
-PORT=8080                    # API Backend
-VUE_PORT=3002               # Dashboard Vue
-RASA_PORT=5005              # Rasa Bot
-PLAYWRIGHT_PORT=3001        # Playwright
-BAILEYS_PORT=3000           # WhatsApp Gateway
-
-# Base de datos
-POSTGRES_HOST=postgres
-POSTGRES_PORT=5432
-POSTGRES_DB=docubot_db
-MONGO_URI=mongodb://mongodb:27017
-
-# Servicios
+# Comunicación entre servicios
 RASA_URL=http://rasa:5005
 PLAYWRIGHT_URL=http://playwright:3001
 API_URL=http://api:8080
+BAILEYS_PORT=3000
+
+# Base de datos
+POSTGRES_HOST=postgres
+MONGO_URI=mongodb://mongodb:27017
 ```
 
----
+### Endpoints Principales
+- **Vue Dashboard**: http://localhost:3002
+- **API Health**: http://localhost:8080/health
+- **API Swagger**: http://localhost:8080/swagger/index.html
+- **Rasa Status**: http://localhost:5005/status
+- **Baileys Health**: http://localhost:3000/health
 
-## 👨‍💻 Contribuciones
+## 🔧 Comandos de Desarrollo
 
-1. Haz fork del proyecto  
-2. Crea una rama: `git checkout -b feature/nombre`  
-3. Realiza tus cambios y haz commit: `git commit -m "Agrega nueva funcionalidad"`  
-4. Push: `git push origin feature/nombre`  
-5. Abre un Pull Request 🚀  
-
----
-
-## 📄 Licencia
-
-Este proyecto está bajo la licencia **MIT**.  
-
----
-
-## 📬 Contacto
-
-**Brando Díaz**  
-✉️ brandodiazmont@gmail.com  
-📱 WhatsApp +57 3023687930  
-🔗 [LinkedIn](https://linkedin.com/in/brandodiaz)  
-
----
-
-## 🔀 Flujo General Detallado
-
-```plaintext
-[Usuario Web Browser]
-        ↓ (HTTP)
-[Vue Dashboard :3002]
-        ↓ (API calls)
-[API Go :8080]
-        ↓ (queries)
-[PostgreSQL/MongoDB]
-
-[Usuario WhatsApp]
-        ↓ (mensaje)
-[Baileys :3000]
-        ↓ (webhook)
-[API Go :8080]
-        ↓ (NLU)
-[RASA :5005]
-        ↓ (actions)
-[Playwright :3001] → [Websites]
+### Levantar Entorno Completo
+```bash
+make up-sequential  # Recomendado: despliega servicios en orden
+make up-local      # Alternativo: despliega todo junto
 ```
+
+### Logs y Debugging
+```bash
+make logs-all       # Todos los logs
+make logs-baileys   # Solo Baileys
+make logs-api       # Solo API
+make logs-rasa      # Solo Rasa
+```
+
+### Reiniciar Servicios
+```bash
+make restart-api
+make restart-baileys  
+make restart-rasa
+```
+
+## 🚨 Puntos Críticos
+
+### Dependencias de Inicio
+1. **PostgreSQL/MongoDB** deben estar listos primero
+2. **API** debe iniciarse antes que Baileys
+3. **Rasa** debe estar entrenado con modelo actual
+4. **Baileys** necesita sesión activa de WhatsApp
+
+### Gestión de Errores
+- API maneja reconexiones automáticas con Rasa
+- Baileys se reconecta automáticamente a WhatsApp
+- Timeouts configurables para todas las comunicaciones
+- Logs centralizados para debugging
+
+### Seguridad
+- Autenticación vía PASETO tokens
+- Validación de mensajes entrantes
+- Rate limiting por usuario
+- Sanitización de datos antes de enviar a servicios externos
+
+## 📈 Escalabilidad
+
+### Horizontal
+- Múltiples instancias de API detrás de load balancer
+- Instancias separadas de Rasa por modelo/idioma
+- Clustering de MongoDB para alta disponibilidad
+
+### Vertical  
+- Optimización de memoria en contenedores Go
+- Caché Redis para sesiones frecuentes
+- Optimización de queries en PostgreSQL
+
+---
+
+*Esta documentación refleja la implementación actual del sistema basada en el análisis del código fuente.*

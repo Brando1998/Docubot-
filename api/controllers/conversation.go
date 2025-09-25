@@ -184,7 +184,8 @@ func sendToRasa(sender, message string) ([]RasaResponseItem, error) {
 		return nil, fmt.Errorf("failed to marshal payload: %w", err)
 	}
 
-	req, err := http.NewRequest("POST", "http://localhost:5005/webhooks/rest/webhook", bytes.NewBuffer(body))
+	// req, err := http.NewRequest("POST", "http://localhost:5005/webhooks/rest/webhook", bytes.NewBuffer(body))
+	req, err := http.NewRequest("POST", "http://rasa:5005/webhooks/rest/webhook", bytes.NewBuffer(body))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
