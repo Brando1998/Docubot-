@@ -33,10 +33,12 @@ func SetupRoutes(r *gin.Engine, config *RouterConfig) {
 		public.GET("/health", controllers.Health)
 		public.GET("/docs/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
-		// WebSocket
+		// WebSocket para conexión con Baileys
 		public.GET("/ws", func(c *gin.Context) {
 			controllers.HandleWebSocket(c, config.WSHub, *config.Upgrader)
 		})
+
+		// Debug: listar bots conectados
 		public.GET("/debug/bots", func(c *gin.Context) {
 			c.JSON(200, gin.H{
 				"bots":  config.WSHub.ListBots(),
@@ -65,58 +67,48 @@ func SetupRoutes(r *gin.Engine, config *RouterConfig) {
 		// --------------------------
 		userGroup := api.Group("/users")
 		{
-			userGroup.POST("", controllers.CreateClient)
-			userGroup.GET("/id/:id", controllers.GetClientByID)
-			userGroup.GET("/phone/:phone", controllers.GetClientByPhone)
-			userGroup.POST("/get-or-create", controllers.GetOrCreateClient)
+			userGroup.GET("/me", controllers.GetCurrentUser)                // Usuario actual
+			userGroup.POST("", controllers.CreateClient)                    // Crear usuario
+			userGroup.GET("/id/:id", controllers.GetClientByID)             // Obtener por ID
+			userGroup.GET("/phone/:phone", controllers.GetClientByPhone)    // Obtener por teléfono
+			userGroup.POST("/get-or-create", controllers.GetOrCreateClient) // Obtener o crear
 		}
 
-		// --------------------------
-		// Conversaciones
-		// --------------------------
+		//--------------------------
+		//Conversaciones (ya implementado)
+		//--------------------------
 		// convGroup := api.Group("/conversations")
 		// {
-		// 	convGroup.POST("", controllers.SendMessage)
-		// 	convGroup.GET("/history", controllers.GetConversationHistory)
+		// 	// Nota: Los mensajes se manejan via WebSocket
+		// 	// Aquí se pueden agregar endpoints para historial
+		// 	convGroup.GET("/history/:client_id", controllers.GetConversationHistory)
+		// 	convGroup.GET("/recent", controllers.GetRecentConversations)
 		// }
 
 		// --------------------------
-		// Documentos
+		// WhatsApp (administración y dashboard)
 		// --------------------------
-		docGroup := api.Group("/documents")
+		whatsappGroup := api.Group("/whatsapp")
 		{
-			docGroup.POST("", controllers.UploadDocument)
-			docGroup.GET("", controllers.GetUserDocuments)
-			// docGroup.GET("/:doc_id", controllers.GetDocument)
-		}
+			// Endpoints para dashboard (sin restricción admin)
+			whatsappGroup.GET("/qr", controllers.GetWhatsAppQR)
+			whatsappGroup.GET("/status", controllers.GetSessionStatus)
 
-		// --------------------------
-		// Automatización
-		// --------------------------
-		autoGroup := api.Group("/automation")
-		{
-			autoGroup.POST("", controllers.RunAutomation)
-			// autoGroup.GET("/status/:job_id", controllers.GetAutomationStatus)
+			// Endpoints para administradores
+			whatsappGroup.POST("/send", controllers.SendWhatsAppMessage)
+			whatsappGroup.GET("/session/:session_id", controllers.GetWhatsAppSession)
+			whatsappGroup.POST("/session", controllers.CreateWhatsAppSession)
 		}
-
-		// --------------------------
-		// WhatsApp (solo para administración)
-		// --------------------------
-		// whatsappGroup := api.Group("/whatsapp")
-		// whatsappGroup.Use(middleware.PasetoAdminMiddleware())
-		// {
-		// 	whatsappGroup.POST("/send", controllers.SendWhatsAppMessage)
-		// 	whatsappGroup.GET("/session/:user_id", controllers.GetWhatsAppSession)
-		// 	whatsappGroup.POST("/session", controllers.CreateWhatsAppSession)
-		// }
 	}
 
 	// =============================================
-	// Rutas de Administración
+	// Rutas de Administración (futuro)
 	// =============================================
 	// admin := r.Group("/admin")
-	// admin.Use(middleware.PasetoAdminMiddleware())
+	// admin.Use(middleware.PasetoAdminMiddleware()) // Middleware para admin
 	// {
 	// 	admin.GET("/metrics", controllers.GetMetrics)
+	// 	admin.GET("/users", controllers.GetAllUsers)
+	// 	admin.DELETE("/users/:id", controllers.DeleteUser)
 	// }
 }

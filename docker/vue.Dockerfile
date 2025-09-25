@@ -4,7 +4,7 @@ WORKDIR /app
 
 # Copiar archivos de configuración
 COPY package*.json ./
-COPY vite.config.js ./
+COPY vite.config.ts ./
 COPY tsconfig*.json ./
 COPY index.html ./
 
@@ -24,15 +24,9 @@ FROM nginx:alpine
 # Copiar archivos compilados
 COPY --from=builder /app/dist /usr/share/nginx/html
 
-# Configuración personalizada de Nginx
+# Copiar configuración personalizada de Nginx desde el proyecto Vue
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 
-# Health check endpoint para nginx
-RUN echo '<!DOCTYPE html><html><head><title>Health</title></head><body>OK</body></html>' > /usr/share/nginx/html/health
-
-# Crear usuario no-root
-RUN addgroup -g 1001 -S nginx
-RUN adduser -S nginx -u 1001
 
 EXPOSE 3002
 

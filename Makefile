@@ -16,6 +16,7 @@ up-local: ## Levantar entorno local con docker-compose
 	@echo "🎭 Playwright: http://localhost:3001"
 	@echo "🔧 API: http://localhost:8080"
 	@echo "💬 Baileys: http://localhost:3000"
+	@echo "📱 Vue Dashboard: http://localhost:3002" 
 
 up-sequential: ## Levantar servicios secuencialmente (recomendado)
 	@echo "🚀 Levantando servicios en orden..."
@@ -59,6 +60,9 @@ logs-playwright: ## Ver logs de Playwright
 logs-baileys: ## Ver logs de Baileys
 	docker compose -f $(COMPOSE_FILE) logs -f baileys
 
+logs-vue: ## Ver logs del Vue Dashboard
+	docker compose -f $(COMPOSE_FILE) logs -f vue-dashboard
+
 logs-all: ## Ver logs de todos los servicios del proyecto
 	docker compose -f $(COMPOSE_FILE) logs -f
 
@@ -74,6 +78,7 @@ health-check: ## Verificar salud de servicios del proyecto
 	@echo -n "Playwright: " && (curl -f http://localhost:3001/health 2>/dev/null && echo "✅" || echo "❌")
 	@echo -n "API: " && (curl -f http://localhost:8080/health 2>/dev/null && echo "✅" || echo "❌")
 	@echo -n "Baileys: " && (curl -f http://localhost:3000/health 2>/dev/null && echo "✅" || echo "❌")
+	@echo -n "Vue Dashboard: " && (curl -f http://localhost:3002/health 2>/dev/null && echo "✅" || echo "❌")
 
 clean: clean-project ## Limpiar SOLO los contenedores, imágenes y volúmenes de este proyecto
 
@@ -116,6 +121,9 @@ restart-rasa: ## Reiniciar solo Rasa
 
 restart-baileys: ## Reiniciar solo Baileys
 	docker compose -f $(COMPOSE_FILE) restart baileys
+
+restart-vue: ## Reiniciar solo el Vue Dashboard
+	docker compose -f $(COMPOSE_FILE) restart vue-dashboard
 
 # Comandos de desarrollo
 dev-logs: ## Ver logs en tiempo real de todos los servicios
