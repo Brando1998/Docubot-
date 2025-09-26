@@ -100,7 +100,7 @@ func LoginWithPaseto(c *gin.Context) {
 	c.JSON(http.StatusOK, response)
 }
 
-// ✅ SIMPLIFICAR: generatePasetoToken sin email
+// generatePasetoToken genera un nuevo token PASETO
 func generatePasetoToken(userID uint, username, role string) (string, time.Time, error) {
 	now := time.Now()
 	expiresAt := now.Add(tokenDuration)
