@@ -1,6 +1,7 @@
-// baileys-ws/src/index.ts - Versión actualizada con endpoints HTTP
+// baileys-ws/src/index.ts - Versión corregida sin bucles infinitos
 import "dotenv/config";
-import { makeWASocket, fetchLatestBaileysVersion } from "@whiskeysockets/baileys";
+import { makeWASocket, fetchLatestBaileysVersion, DisconnectReason } from "@whiskeysockets/baileys";
+import { Boom } from "@hapi/boom";
 import P from "pino";
 import { getAuthState } from "./sessions/auth.js";
 import qrcode from "qrcode-terminal";
@@ -18,12 +19,18 @@ app.use(express.json());
 // Variables globales para mantener estado
 let sock: any = null;
 let qrCodeData: string = '';
+let reconnectAttempts = 0;
+const MAX_RECONNECT_ATTEMPTS = 5;
+let isShuttingDown = false;
+
 let currentStatus = {
     connected: false,
     number: '',
     name: '',
     qr_code: '',
-    qr_image: ''
+    qr_image: '',
+    last_disconnect_reason: '',
+    reconnect_attempts: 0
 };
 
 // =============================================
@@ -36,7 +43,8 @@ app.get('/health', (req, res) => {
         status: 'ok', 
         service: 'baileys-ws',
         timestamp: new Date().toISOString(),
-        whatsapp_connected: currentStatus.connected
+        whatsapp_connected: currentStatus.connected,
+        reconnect_attempts: reconnectAttempts
     });
 });
 
@@ -50,7 +58,7 @@ app.get('/status', (req, res) => {
     });
 });
 
-// 🆕 Endpoint para obtener QR o estado
+// Endpoint para obtener QR o estado
 app.get('/qr', async (req, res) => {
     try {
         if (currentStatus.connected) {
@@ -65,28 +73,33 @@ app.get('/qr', async (req, res) => {
                     last_seen: new Date().toISOString()
                 }
             });
-        } else if (qrCodeData) {
+        } else if (qrCodeData && qrCodeData !== '') {
             // Hay QR disponible
             const qrImageBase64 = await QRCode.toDataURL(qrCodeData);
             
             res.json({
-                status: 'waiting_scan',
-                message: 'Escanea el código QR con WhatsApp',
-                connected: false,
+                status: 'waiting_for_scan',
+                message: 'Escanea el código QR en WhatsApp',
                 qr_code: qrCodeData,
-                qr_image: qrImageBase64
-            });
-        } else {
-            // Generar nuevo QR
-            await restartBaileys();
-            res.json({
-                status: 'generating',
-                message: 'Generando código QR...',
+                qr_image: qrImageBase64,
                 connected: false
             });
+        } else {
+            // Generar nueva sesión si no hay QR ni conexión
+            if (!sock || reconnectAttempts >= MAX_RECONNECT_ATTEMPTS) {
+                console.log('🔄 Iniciando nueva sesión...');
+                await restartBaileys();
+            }
+            
+            res.json({
+                status: 'initializing',
+                message: 'Iniciando sesión de WhatsApp...',
+                connected: false,
+                reconnect_attempts: reconnectAttempts
+            });
         }
-    } catch (error:any) {
-        console.error('Error en /qr:', error);
+    } catch (error: any) {
+        console.error('Error en endpoint /qr:', error);
         res.status(500).json({
             error: 'Error generando QR',
             details: error.message
@@ -94,58 +107,25 @@ app.get('/qr', async (req, res) => {
     }
 });
 
-// 🆕 Endpoint para desconectar
-app.post('/disconnect', async (req, res) => {
-    try {
-        if (sock) {
-            await sock.logout();
-            sock.end();
-            sock = null;
-        }
-        
-        // Limpiar estado
-        currentStatus = {
-            connected: false,
-            number: '',
-            name: '',
-            qr_code: '',
-            qr_image: ''
-        };
-        qrCodeData = '';
-        
-        res.json({
-            success: true,
-            message: 'Sesión de WhatsApp terminada',
-            status: 'disconnected'
-        });
-    } catch (error:any) {
-        console.error('Error desconectando:', error);
-        res.status(500).json({
-            error: 'Error desconectando WhatsApp',
-            details: error.message
-        });
-    }
-});
-
-// 🆕 Endpoint para enviar mensajes (desde el backend)
+// Endpoint para enviar mensaje
 app.post('/send', async (req, res) => {
     try {
-        const { to, message } = req.body;
+        const { number, message } = req.body;
         
-        if (!currentStatus.connected || !sock) {
+        if (!sock || !currentStatus.connected) {
             return res.status(400).json({
                 error: 'WhatsApp no está conectado'
             });
         }
-        
-        await sock.sendMessage(to, { text: message });
+
+        const jid = number.includes('@') ? number : `${number}@s.whatsapp.net`;
+        await sock.sendMessage(jid, { text: message });
         
         res.json({
             success: true,
-            message: 'Mensaje enviado correctamente',
-            to: to
+            message: 'Mensaje enviado correctamente'
         });
-    } catch (error:any) {
+    } catch (error: any) {
         console.error('Error enviando mensaje:', error);
         res.status(500).json({
             error: 'Error enviando mensaje',
@@ -154,10 +134,11 @@ app.post('/send', async (req, res) => {
     }
 });
 
-// 🆕 Endpoint para reiniciar/crear nueva sesión
+// Endpoint para reiniciar/crear nueva sesión
 app.post('/restart', async (req, res) => {
     try {
         console.log('🔄 Reiniciando sesión de WhatsApp...');
+        reconnectAttempts = 0; // Reset counter on manual restart
         await restartBaileys();
         
         res.json({
@@ -165,7 +146,7 @@ app.post('/restart', async (req, res) => {
             message: 'Sesión reiniciada correctamente',
             status: 'restarting'
         });
-    } catch (error:any) {
+    } catch (error: any) {
         console.error('Error reiniciando sesión:', error);
         res.status(500).json({
             error: 'Error reiniciando sesión',
@@ -174,8 +155,51 @@ app.post('/restart', async (req, res) => {
     }
 });
 
+// 🆕 Endpoint para limpiar credenciales manualmente
+app.post('/clear-session', async (req, res) => {
+    try {
+        console.log('🧹 Limpiando credenciales manualmente...');
+        
+        // Cerrar socket actual si existe
+        if (sock) {
+            try {
+                sock.end();
+            } catch (e) {
+                console.log('Socket ya cerrado');
+            }
+        }
+        
+        // Limpiar credenciales
+        await clearAuthState();
+        
+        // Reset variables
+        reconnectAttempts = 0;
+        qrCodeData = '';
+        currentStatus = {
+            connected: false,
+            number: '',
+            name: '',
+            qr_code: '',
+            qr_image: '',
+            last_disconnect_reason: '',
+            reconnect_attempts: 0
+        };
+        
+        res.json({
+            success: true,
+            message: 'Credenciales limpiadas correctamente. Llama a /restart para comenzar nueva sesión.'
+        });
+    } catch (error: any) {
+        console.error('Error limpiando credenciales:', error);
+        res.status(500).json({
+            error: 'Error limpiando credenciales',
+            details: error.message
+        });
+    }
+});
+
 // =============================================
-// FUNCIONES DE BAILEYS
+// FUNCIONES DE BAILEYS CON MANEJO MEJORADO
 // =============================================
 
 const startHealthServer = () => {
@@ -188,9 +212,19 @@ const restartBaileys = async () => {
     try {
         console.log('🔄 Reiniciando Baileys...');
         
+        // Limpiar socket anterior
         if (sock) {
-            sock.end();
+            try {
+                sock.end();
+            } catch (e) {
+                console.log('Socket ya cerrado');
+            }
         }
+        
+        // Reset QR code
+        qrCodeData = '';
+        currentStatus.qr_code = '';
+        currentStatus.qr_image = '';
         
         const { state, saveCreds } = await getAuthState();
         const { version } = await fetchLatestBaileysVersion();
@@ -199,20 +233,41 @@ const restartBaileys = async () => {
             version,
             logger: P({ level: "silent" }),
             auth: state,
-            defaultQueryTimeoutMs: undefined
+            defaultQueryTimeoutMs: 60000, // 60 segundos timeout
+            connectTimeoutMs: 60000,
+            keepAliveIntervalMs: 30000,
+            markOnlineOnConnect: true
         });
 
         setupBaileysEvents(sock, saveCreds);
         
     } catch (error) {
-        console.error('Error reiniciando Baileys:', error);
+        console.error('❌ Error reiniciando Baileys:', error);
+        reconnectAttempts++;
+        currentStatus.reconnect_attempts = reconnectAttempts;
+        
+        // Solo reintentar si no hemos excedido el límite
+        if (reconnectAttempts < MAX_RECONNECT_ATTEMPTS && !isShuttingDown) {
+            const delay = Math.min(1000 * Math.pow(2, reconnectAttempts), 30000); // Backoff exponencial, máx 30s
+            console.log(`⏰ Reintentando en ${delay/1000} segundos... (${reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS})`);
+            setTimeout(() => restartBaileys(), delay);
+        } else {
+            console.log('❌ Máximo de reintentos alcanzado. Deteniéndose.');
+        }
     }
 };
 
 const setupBaileysEvents = (socket: any, saveCreds: any) => {
-    // Evento de actualización de conexión
+    // Evento de actualización de conexión - MEJORADO
     socket.ev.on("connection.update", async (update: any) => {
         const { connection, lastDisconnect, qr } = update;
+        
+        console.log('📡 Connection update:', { 
+            connection, 
+            hasQR: !!qr, 
+            errorCode: lastDisconnect?.error?.output?.statusCode,
+            reconnectAttempts 
+        });
         
         if (qr) {
             qrCodeData = qr;
@@ -232,6 +287,10 @@ const setupBaileysEvents = (socket: any, saveCreds: any) => {
         if (connection === "open") {
             console.log("✅ Conexión WhatsApp establecida");
             
+            // Reset counters on successful connection
+            reconnectAttempts = 0;
+            currentStatus.reconnect_attempts = 0;
+            
             // Actualizar estado
             currentStatus.connected = true;
             currentStatus.number = socket.user?.id || '';
@@ -242,9 +301,19 @@ const setupBaileysEvents = (socket: any, saveCreds: any) => {
             console.log("❌ Conexión WhatsApp cerrada");
             currentStatus.connected = false;
             
-            // Intentar reconectar si no fue logout manual
-            if (!lastDisconnect?.error?.message?.includes('logout')) {
-                setTimeout(() => restartBaileys(), 3000);
+            // ANÁLISIS MEJORADO DE LA DESCONEXIÓN
+            const shouldReconnect = lastDisconnect?.error ? 
+                await handleDisconnection(lastDisconnect.error) : false;
+            
+            if (shouldReconnect && !isShuttingDown && reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
+                reconnectAttempts++;
+                currentStatus.reconnect_attempts = reconnectAttempts;
+                
+                const delay = Math.min(3000 * reconnectAttempts, 30000); // Backoff progressive
+                console.log(`⏰ Reintentando conexión en ${delay/1000} segundos... (${reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS})`);
+                setTimeout(() => restartBaileys(), delay);
+            } else if (reconnectAttempts >= MAX_RECONNECT_ATTEMPTS) {
+                console.log('❌ Máximo de reintentos alcanzado. Para reiniciar manualmente, llama al endpoint /restart');
             }
         }
     });
@@ -276,6 +345,127 @@ const setupBaileysEvents = (socket: any, saveCreds: any) => {
     });
 };
 
+// FUNCIÓN PARA LIMPIAR CREDENCIALES CORRUPTAS
+const clearAuthState = async (): Promise<void> => {
+    try {
+        console.log('🧹 Limpiando credenciales corruptas...');
+        
+        // Importar módulos de manera dinámica
+        const { existsSync, readdirSync, unlinkSync, rmSync } = await import('fs');
+        const { join } = await import('path');
+        
+        const authPath = './auth';
+        const sessionPath = './src/sessions';
+        
+        // Limpiar directorio auth
+        if (existsSync(authPath)) {
+            try {
+                const files = readdirSync(authPath);
+                for (const file of files) {
+                    const filePath = join(authPath, file);
+                    try {
+                        unlinkSync(filePath);
+                        console.log(`🗑️ Eliminado: ${filePath}`);
+                    } catch (e) {
+                        console.log(`⚠️ No se pudo eliminar ${filePath}:`, e);
+                    }
+                }
+            } catch (e) {
+                console.log('⚠️ Error leyendo directorio auth:', e);
+            }
+        }
+        
+        // Limpiar directorio sessions si existe
+        if (existsSync(sessionPath)) {
+            try {
+                const files = readdirSync(sessionPath);
+                for (const file of files) {
+                    const filePath = join(sessionPath, file);
+                    try {
+                        unlinkSync(filePath);
+                        console.log(`🗑️ Eliminado: ${filePath}`);
+                    } catch (e) {
+                        console.log(`⚠️ No se pudo eliminar ${filePath}:`, e);
+                    }
+                }
+            } catch (e) {
+                console.log('⚠️ Error leyendo directorio sessions:', e);
+            }
+        }
+        
+        console.log('✅ Credenciales limpiadas exitosamente');
+        
+        // Reset variables globales
+        qrCodeData = '';
+        currentStatus.qr_code = '';
+        currentStatus.qr_image = '';
+        currentStatus.last_disconnect_reason = '';
+        
+    } catch (error) {
+        console.error('❌ Error limpiando credenciales:', error);
+    }
+};
+
+// FUNCIÓN PARA ANALIZAR ERRORES DE DESCONEXIÓN - CORREGIDA
+const handleDisconnection = async (error: any): Promise<boolean> => {
+    const boom = error as Boom;
+    const statusCode = boom?.output?.statusCode;
+    
+    currentStatus.last_disconnect_reason = `${statusCode}: ${boom?.message}`;
+    
+    console.log('🔍 Analizando desconexión:', {
+        statusCode,
+        message: boom?.message,
+        reconnectAttempts
+    });
+    
+    switch (statusCode) {
+        case 401: // CORREGIDO: 401 = Credenciales corruptas/BadSession
+            console.log('🗑️ Error 401: Credenciales corruptas - limpiando automáticamente');
+            await clearAuthState();
+            return true; // Reintentar con credenciales limpias
+            
+        case DisconnectReason.badSession:
+            console.log('🗑️ Sesión inválida detectada - limpiando credenciales');
+            await clearAuthState();
+            return true; // Reintentar con credenciales limpias
+            
+        case DisconnectReason.connectionClosed:
+            console.log('🔌 Conexión cerrada normalmente');
+            return true; // Seguro reintentar
+            
+        case DisconnectReason.connectionLost:
+            console.log('📡 Conexión perdida - reintentando');
+            return true; // Seguro reintentar
+            
+        case DisconnectReason.connectionReplaced:
+            console.log('🔄 Conexión reemplazada por otra sesión');
+            return false; // No reintentar automáticamente
+            
+        case 403: // CORREGIDO: 403 = Logout manual real
+        case DisconnectReason.loggedOut:
+            console.log('👋 Logout manual detectado (403)');
+            return false; // No reintentar
+            
+        case DisconnectReason.restartRequired:
+            console.log('♻️ Reinicio requerido');
+            return true; // Seguro reintentar
+            
+        case DisconnectReason.timedOut:
+            console.log('⏰ Timeout - reintentando');
+            return true; // Seguro reintentar
+            
+        default:
+            console.log(`❓ Código de desconexión desconocido: ${statusCode}`);
+            // Para códigos desconocidos, limpiar credenciales por seguridad si es 4xx
+            if (statusCode >= 400 && statusCode < 500) {
+                console.log('🧹 Error 4xx detectado - limpiando credenciales por seguridad');
+                await clearAuthState();
+            }
+            return true; // Reintentar por defecto, pero con límite
+    }
+};
+
 // =============================================
 // INICIALIZACIÓN
 // =============================================
@@ -285,8 +475,10 @@ const start = async () => {
         // 1. Iniciar servidor HTTP
         startHealthServer();
         
-        // 2. Iniciar Baileys
-        await restartBaileys();
+        // 2. Iniciar Baileys (solo si no estamos en shutdown)
+        if (!isShuttingDown) {
+            await restartBaileys();
+        }
         
         console.log('🚀 Baileys-WS iniciado correctamente');
         
@@ -299,8 +491,29 @@ const start = async () => {
 // Manejar cierre graceful
 process.on('SIGINT', async () => {
     console.log('🛑 Cerrando Baileys...');
+    isShuttingDown = true;
+    
     if (sock) {
-        await sock.logout();
+        try {
+            await sock.logout();
+        } catch (e) {
+            console.log('Error durante logout:', e);
+        }
+        sock.end();
+    }
+    process.exit(0);
+});
+
+process.on('SIGTERM', async () => {
+    console.log('🛑 SIGTERM recibido, cerrando...');
+    isShuttingDown = true;
+    
+    if (sock) {
+        try {
+            await sock.logout();
+        } catch (e) {
+            console.log('Error durante logout:', e);
+        }
         sock.end();
     }
     process.exit(0);

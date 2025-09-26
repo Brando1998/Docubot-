@@ -1,4 +1,4 @@
-<!-- vue-dashboard/src/views/Dashboard/WhatsAppView.vue -->
+<!-- vue-dashboard/src/views/Dashboard/WhatsAppView.vue CORREGIDO -->
 <template>
   <div>
     <h2 class="text-xl font-bold mb-6">Configuración de WhatsApp</h2>
@@ -51,32 +51,67 @@
         </button>
       </div>
       
-      <!-- QR Code para nueva conexión -->
-      <div v-else-if="whatsappData?.status === 'waiting_scan'" class="bg-blue-50 border border-blue-200 rounded-lg p-6 text-center">
+      <!-- 🔥 CORREGIDO: QR Code para nueva conexión -->
+      <div v-else-if="whatsappData?.status === 'waiting_for_scan'" class="bg-blue-50 border border-blue-200 rounded-lg p-6 text-center">
         <div class="mb-4">
           <h4 class="text-lg font-medium text-blue-800 mb-2">Escanea el Código QR</h4>
           <p class="text-blue-600 text-sm">Abre WhatsApp en tu teléfono y escanea este código</p>
         </div>
         
-        <!-- QR Code Display -->
+        <!-- 🔥 CORREGIDO: QR Code Display con imagen base64 -->
         <div class="bg-white p-4 rounded-lg border-2 border-dashed border-blue-300 inline-block mb-4">
           <div v-if="whatsappData.qr_image" class="w-64 h-64 flex items-center justify-center">
-            <img :src="whatsappData.qr_image" alt="WhatsApp QR Code" class="max-w-full max-h-full">
+            <img 
+              :src="whatsappData.qr_image" 
+              alt="WhatsApp QR Code" 
+              class="max-w-full max-h-full border border-gray-200 rounded"
+            >
           </div>
           <div v-else class="w-64 h-64 flex items-center justify-center bg-gray-100 rounded">
-            <svg class="w-8 h-8 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
-              <path fill-rule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clip-rule="evenodd"/>
-            </svg>
+            <div class="text-center">
+              <svg class="w-8 h-8 text-gray-400 mx-auto mb-2" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clip-rule="evenodd"/>
+              </svg>
+              <p class="text-gray-500 text-sm">Generando QR...</p>
+            </div>
           </div>
+        </div>
+        
+        <div class="mb-4">
+          <p class="text-blue-600 text-sm mb-2">
+            <strong>Instrucciones:</strong>
+          </p>
+          <ol class="text-left text-blue-600 text-sm space-y-1 max-w-md mx-auto">
+            <li>1. Abre WhatsApp en tu teléfono</li>
+            <li>2. Ve a Configuración → Dispositivos vinculados</li>
+            <li>3. Toca "Vincular un dispositivo"</li>
+            <li>4. Escanea este código QR</li>
+          </ol>
         </div>
         
         <button
           @click="refreshQR"
           :disabled="isLoading"
-          class="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 disabled:opacity-50"
+          class="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 disabled:opacity-50 flex items-center mx-auto"
         >
+          <svg v-if="isLoading" class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="m4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+          </svg>
           {{ isLoading ? 'Actualizando...' : 'Actualizar QR' }}
         </button>
+      </div>
+
+      <!-- 🔥 CORREGIDO: Estado inicializando -->
+      <div v-else-if="whatsappData?.status === 'initializing'" class="bg-yellow-50 border border-yellow-200 rounded-lg p-6 text-center">
+        <div class="w-16 h-16 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-4">
+          <svg class="w-8 h-8 text-yellow-600 animate-spin" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="m4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+          </svg>
+        </div>
+        <h4 class="text-lg font-medium text-yellow-800 mb-2">Inicializando WhatsApp</h4>
+        <p class="text-yellow-600 text-sm">Configurando conexión, espera un momento...</p>
       </div>
       
       <!-- Estado desconectado -->
@@ -119,24 +154,34 @@
         </div>
       </div>
     </div>
+
+    <!-- 🔥 NUEVO: Debug info para desarrollo -->
+    <div v-if="showDebug" class="bg-gray-100 border border-gray-300 rounded-lg p-4 mt-4">
+      <h4 class="font-medium text-gray-700 mb-2">Debug Info:</h4>
+      <pre class="text-xs text-gray-600 overflow-auto">{{ JSON.stringify(whatsappData, null, 2) }}</pre>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import api from '@/services/api'
+
+// 🔥 CORREGIDO: Configurar la URL base de la API
+const API_BASE_URL = 'http://localhost:8080' // Ajustar según tu configuración
 
 // Estado reactivo
 const whatsappData = ref<any>(null)
 const isLoading = ref(false)
 const message = ref('')
 const messageType = ref<'success' | 'error'>('success')
+const showDebug = ref(false) // Para debugging - cambiar a false en producción
 
 // Estados computados
 const statusText = computed(() => {
   if (!whatsappData.value) return 'Verificando...'
   if (whatsappData.value.connected) return 'Conectado'
-  if (whatsappData.value.status === 'waiting_scan') return 'Esperando escaneo'
+  if (whatsappData.value.status === 'waiting_for_scan') return 'Esperando escaneo'
+  if (whatsappData.value.status === 'initializing') return 'Inicializando'
   return 'Desconectado'
 })
 
@@ -144,14 +189,16 @@ const statusBadgeClasses = computed(() => {
   const base = 'flex items-center px-3 py-1 rounded-full text-sm font-medium'
   if (!whatsappData.value) return `${base} bg-gray-100 text-gray-800`
   if (whatsappData.value.connected) return `${base} bg-green-100 text-green-800`
-  if (whatsappData.value.status === 'waiting_scan') return `${base} bg-blue-100 text-blue-800`
+  if (whatsappData.value.status === 'waiting_for_scan') return `${base} bg-blue-100 text-blue-800`
+  if (whatsappData.value.status === 'initializing') return `${base} bg-yellow-100 text-yellow-800`
   return `${base} bg-red-100 text-red-800`
 })
 
 const statusDotClasses = computed(() => {
   if (!whatsappData.value) return 'bg-gray-400'
   if (whatsappData.value.connected) return 'bg-green-400'
-  if (whatsappData.value.status === 'waiting_scan') return 'bg-blue-400'
+  if (whatsappData.value.status === 'waiting_for_scan') return 'bg-blue-400'
+  if (whatsappData.value.status === 'initializing') return 'bg-yellow-400'
   return 'bg-red-400'
 })
 
@@ -161,74 +208,151 @@ const messageClasses = computed(() => {
   return `${base} bg-red-50 border-red-200`
 })
 
-// Funciones
+// 🔥 CORREGIDO: Funciones API
+const apiCall = async (url: string, options: RequestInit = {}) => {
+  try {
+    const response = await fetch(`${API_BASE_URL}${url}`, {
+      headers: {
+        'Content-Type': 'application/json',
+        // Agregar headers de autenticación si es necesario
+        // 'Authorization': `Bearer ${authToken}`
+        ...options.headers
+      },
+      ...options
+    })
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}))
+      throw new Error(errorData.error || `HTTP ${response.status}`)
+    }
+
+    return await response.json()
+  } catch (error: any) {
+    console.error('API Error:', error)
+    throw error
+  }
+}
+
 const fetchWhatsAppStatus = async () => {
   try {
     isLoading.value = true
-    const response = await api.get('/api/v1/whatsapp/qr')
-    whatsappData.value = response.data
+    const response = await apiCall('/api/v1/whatsapp/qr')
+    whatsappData.value = response
     clearMessage()
+    
+    console.log('📱 WhatsApp Status:', response) // Debug log
   } catch (error: any) {
-    showMessage('Error obteniendo estado de WhatsApp', 'error')
-    console.error('Error:', error)
+    console.error('❌ Error fetching WhatsApp status:', error)
+    showMessage(`Error obteniendo estado: ${error.message}`, 'error')
   } finally {
     isLoading.value = false
   }
 }
 
 const generateQR = async () => {
-  await fetchWhatsAppStatus()
-}
-
-const refreshQR = async () => {
-  await fetchWhatsAppStatus()
-}
-
-const disconnectWhatsApp = async () => {
   try {
     isLoading.value = true
-    await api.post('/api/v1/whatsapp/disconnect')
-    showMessage('Sesión finalizada exitosamente', 'success')
+    clearMessage()
+    
+    // Primero intentar obtener el estado/QR
     await fetchWhatsAppStatus()
+    
+    // Si no está generando, forzar restart
+    if (whatsappData.value?.status !== 'waiting_for_scan' && whatsappData.value?.status !== 'initializing') {
+      console.log('🔄 Forzando restart para generar QR...')
+      await apiCall('/api/v1/whatsapp/restart', { method: 'POST' })
+      
+      // Esperar un momento y volver a verificar
+      setTimeout(fetchWhatsAppStatus, 2000)
+    }
+    
+    showMessage('QR generado correctamente', 'success')
   } catch (error: any) {
-    showMessage('Error finalizando sesión', 'error')
-    console.error('Error:', error)
+    console.error('❌ Error generating QR:', error)
+    showMessage(`Error generando QR: ${error.message}`, 'error')
   } finally {
     isLoading.value = false
   }
 }
 
-const showMessage = (msg: string, type: 'success' | 'error') => {
-  message.value = msg
+const refreshQR = async () => {
+  try {
+    isLoading.value = true
+    clearMessage()
+    
+    // Restart para generar nuevo QR
+    await apiCall('/api/v1/whatsapp/restart', { method: 'POST' })
+    
+    // Esperar y actualizar estado
+    setTimeout(fetchWhatsAppStatus, 2000)
+    
+    showMessage('QR actualizado', 'success')
+  } catch (error: any) {
+    console.error('❌ Error refreshing QR:', error)
+    showMessage(`Error actualizando QR: ${error.message}`, 'error')
+  } finally {
+    isLoading.value = false
+  }
+}
+
+const disconnectWhatsApp = async () => {
+  try {
+    isLoading.value = true
+    const response = await apiCall('/api/v1/whatsapp/disconnect', { method: 'POST' })
+    console.info(response)
+    whatsappData.value = { connected: false, status: 'disconnected' }
+    showMessage('WhatsApp desconectado correctamente', 'success')
+  } catch (error: any) {
+    console.error('❌ Error disconnecting WhatsApp:', error)
+    showMessage(`Error desconectando: ${error.message}`, 'error')
+  } finally {
+    isLoading.value = false
+  }
+}
+
+// Utilidades
+const showMessage = (text: string, type: 'success' | 'error' = 'success') => {
+  message.value = text
   messageType.value = type
-  setTimeout(() => {
-    message.value = ''
-  }, 5000)
+  setTimeout(clearMessage, 5000)
 }
 
 const clearMessage = () => {
   message.value = ''
 }
 
-const formatDate = (date: string | undefined) => {
-  if (!date) return 'Ahora'
-  return new Date(date).toLocaleString('es-ES', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit'
-  })
+const formatDate = (dateString: string) => {
+  if (!dateString || dateString === '0001-01-01T00:00:00Z') return 'No disponible'
+  return new Date(dateString).toLocaleString()
+}
+
+// 🔥 CORREGIDO: Auto-refresh del estado cada 5 segundos
+let refreshInterval: number | null = null
+
+const startAutoRefresh = () => {
+  refreshInterval = setInterval(() => {
+    if (!isLoading.value) {
+      fetchWhatsAppStatus()
+    }
+  }, 5000) // Cada 5 segundos
+}
+
+const stopAutoRefresh = () => {
+  if (refreshInterval) {
+    clearInterval(refreshInterval)
+    refreshInterval = null
+  }
 }
 
 // Lifecycle
 onMounted(() => {
   fetchWhatsAppStatus()
-  
-  // Polling cada 30 segundos para actualizar estado
-  const interval = setInterval(fetchWhatsAppStatus, 30000)
-  
-  // Limpiar interval al desmontar
-  return () => clearInterval(interval)
+  startAutoRefresh()
+})
+
+// Cleanup on unmount
+import { onUnmounted } from 'vue'
+onUnmounted(() => {
+  stopAutoRefresh()
 })
 </script>
