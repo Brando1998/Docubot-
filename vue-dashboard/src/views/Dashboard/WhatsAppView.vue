@@ -1,47 +1,42 @@
-<!-- vue-dashboard/src/views/Dashboard/WhatsAppView.vue CORREGIDO -->
 <template>
-  <div>
-    <h2 class="text-xl font-bold mb-6">Configuración de WhatsApp</h2>
-    
+  <div class="max-w-4xl mx-auto p-6">
+    <!-- Header -->
+    <div class="mb-6">
+      <h1 class="text-2xl font-bold text-gray-900 mb-2">WhatsApp Bot</h1>
+      <p class="text-gray-600">Administra la conexión de WhatsApp para el chatbot</p>
+    </div>
+
     <!-- Estado de conexión -->
-    <div class="bg-white rounded-lg shadow p-6 mb-6">
+    <div class="bg-white rounded-lg shadow-md p-6 mb-6">
       <div class="flex items-center justify-between mb-4">
-        <h3 class="text-lg font-semibold">Estado de Conexión</h3>
+        <h2 class="text-xl font-semibold text-gray-800">Estado de Conexión</h2>
         <div :class="statusBadgeClasses">
-          <div class="w-2 h-2 rounded-full mr-2" :class="statusDotClasses"></div>
+          <div :class="statusDotClasses" class="w-2 h-2 rounded-full mr-2"></div>
           {{ statusText }}
         </div>
       </div>
-      
-      <!-- Información de sesión activa -->
-      <div v-if="whatsappData?.connected" class="bg-green-50 border border-green-200 rounded-lg p-4">
-        <div class="flex items-center mb-3">
-          <div class="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center mr-3">
-            <svg class="w-5 h-5 text-green-600" fill="currentColor" viewBox="0 0 20 20">
-              <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
-            </svg>
-          </div>
-          <div>
-            <p class="font-medium text-green-800">WhatsApp Conectado</p>
-            <p class="text-sm text-green-600">{{ whatsappData.session_info?.name || 'Bot Activo' }}</p>
-          </div>
+
+      <!-- WhatsApp conectado -->
+      <div v-if="whatsappData?.connected" class="bg-green-50 border border-green-200 rounded-lg p-6 text-center">
+        <div class="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+          <svg class="w-8 h-8 text-green-600" fill="currentColor" viewBox="0 0 24 24">
+            <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.890-5.335 11.893-11.893A11.821 11.821 0 0020.885 3.488"/>
+          </svg>
         </div>
+        <h4 class="text-lg font-medium text-green-800 mb-2">WhatsApp Conectado</h4>
+        <p class="text-green-600 text-sm mb-4">
+          <strong>{{ whatsappData.user_name || 'Usuario' }}</strong> 
+          ({{ whatsappData.phone_number || 'Sin número' }})
+        </p>
         
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-          <div class="bg-white rounded p-3 border">
-            <p class="text-sm text-gray-600">Número</p>
-            <p class="font-medium">{{ whatsappData.session_info?.number || 'No disponible' }}</p>
-          </div>
-          <div class="bg-white rounded p-3 border">
-            <p class="text-sm text-gray-600">Última actividad</p>
-            <p class="font-medium">{{ formatDate(whatsappData.session_info?.last_seen) }}</p>
-          </div>
+        <div class="text-sm text-green-600 mb-4">
+          <p><strong>Última conexión:</strong> {{ formatDate(whatsappData.last_connected) }}</p>
         </div>
         
         <button
-          @click="disconnectWhatsApp"
+          @click="handleDisconnect"
           :disabled="isLoading"
-          class="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
+          class="bg-red-500 text-white px-6 py-2 rounded-lg hover:bg-red-600 disabled:opacity-50 flex items-center mx-auto"
         >
           <svg v-if="isLoading" class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
@@ -51,14 +46,13 @@
         </button>
       </div>
       
-      <!-- 🔥 CORREGIDO: QR Code para nueva conexión -->
+      <!-- QR Code para nueva conexión -->
       <div v-else-if="whatsappData?.status === 'waiting_for_scan'" class="bg-blue-50 border border-blue-200 rounded-lg p-6 text-center">
         <div class="mb-4">
           <h4 class="text-lg font-medium text-blue-800 mb-2">Escanea el Código QR</h4>
           <p class="text-blue-600 text-sm">Abre WhatsApp en tu teléfono y escanea este código</p>
         </div>
         
-        <!-- 🔥 CORREGIDO: QR Code Display con imagen base64 -->
         <div class="bg-white p-4 rounded-lg border-2 border-dashed border-blue-300 inline-block mb-4">
           <div v-if="whatsappData.qr_image" class="w-64 h-64 flex items-center justify-center">
             <img 
@@ -77,20 +71,8 @@
           </div>
         </div>
         
-        <div class="mb-4">
-          <p class="text-blue-600 text-sm mb-2">
-            <strong>Instrucciones:</strong>
-          </p>
-          <ol class="text-left text-blue-600 text-sm space-y-1 max-w-md mx-auto">
-            <li>1. Abre WhatsApp en tu teléfono</li>
-            <li>2. Ve a Configuración → Dispositivos vinculados</li>
-            <li>3. Toca "Vincular un dispositivo"</li>
-            <li>4. Escanea este código QR</li>
-          </ol>
-        </div>
-        
         <button
-          @click="refreshQR"
+          @click="handleRefreshQR"
           :disabled="isLoading"
           class="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 disabled:opacity-50 flex items-center mx-auto"
         >
@@ -102,7 +84,7 @@
         </button>
       </div>
 
-      <!-- 🔥 CORREGIDO: Estado inicializando -->
+      <!-- Estado inicializando -->
       <div v-else-if="whatsappData?.status === 'initializing'" class="bg-yellow-50 border border-yellow-200 rounded-lg p-6 text-center">
         <div class="w-16 h-16 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-4">
           <svg class="w-8 h-8 text-yellow-600 animate-spin" fill="none" viewBox="0 0 24 24">
@@ -125,7 +107,7 @@
         <p class="text-gray-600 text-sm mb-4">Genera un código QR para conectar WhatsApp</p>
         
         <button
-          @click="generateQR"
+          @click="handleGenerateQR"
           :disabled="isLoading"
           class="bg-green-500 text-white px-6 py-2 rounded-lg hover:bg-green-600 disabled:opacity-50 flex items-center mx-auto"
         >
@@ -154,27 +136,28 @@
         </div>
       </div>
     </div>
-
-    <!-- 🔥 NUEVO: Debug info para desarrollo -->
-    <div v-if="showDebug" class="bg-gray-100 border border-gray-300 rounded-lg p-4 mt-4">
-      <h4 class="font-medium text-gray-700 mb-2">Debug Info:</h4>
-      <pre class="text-xs text-gray-600 overflow-auto">{{ JSON.stringify(whatsappData, null, 2) }}</pre>
-    </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { useWhatsApp } from '@/composables/useWhatsApp'
 
-// 🔥 CORREGIDO: Configurar la URL base de la API
-const API_BASE_URL = 'http://localhost:8080' // Ajustar según tu configuración
+// Usar el composable
+const {
+  whatsappData,
+  isLoading,
+  error,
+  fetchWhatsAppStatus,
+  generateQR,
+  refreshQR,
+  disconnectWhatsApp,
+  clearError
+} = useWhatsApp()
 
-// Estado reactivo
-const whatsappData = ref<any>(null)
-const isLoading = ref(false)
+// Estado para mensajes de UI
 const message = ref('')
 const messageType = ref<'success' | 'error'>('success')
-const showDebug = ref(false) // Para debugging - cambiar a false en producción
 
 // Estados computados
 const statusText = computed(() => {
@@ -208,105 +191,31 @@ const messageClasses = computed(() => {
   return `${base} bg-red-50 border-red-200`
 })
 
-// 🔥 CORREGIDO: Funciones API
-const apiCall = async (url: string, options: RequestInit = {}) => {
+// Handlers que usan el composable
+const handleGenerateQR = async () => {
   try {
-    const response = await fetch(`${API_BASE_URL}${url}`, {
-      headers: {
-        'Content-Type': 'application/json',
-        // Agregar headers de autenticación si es necesario
-        // 'Authorization': `Bearer ${authToken}`
-        ...options.headers
-      },
-      ...options
-    })
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}))
-      throw new Error(errorData.error || `HTTP ${response.status}`)
-    }
-
-    return await response.json()
-  } catch (error: any) {
-    console.error('API Error:', error)
-    throw error
-  }
-}
-
-const fetchWhatsAppStatus = async () => {
-  try {
-    isLoading.value = true
-    const response = await apiCall('/api/v1/whatsapp/qr')
-    whatsappData.value = response
-    clearMessage()
-    
-    console.log('📱 WhatsApp Status:', response) // Debug log
-  } catch (error: any) {
-    console.error('❌ Error fetching WhatsApp status:', error)
-    showMessage(`Error obteniendo estado: ${error.message}`, 'error')
-  } finally {
-    isLoading.value = false
-  }
-}
-
-const generateQR = async () => {
-  try {
-    isLoading.value = true
-    clearMessage()
-    
-    // Primero intentar obtener el estado/QR
-    await fetchWhatsAppStatus()
-    
-    // Si no está generando, forzar restart
-    if (whatsappData.value?.status !== 'waiting_for_scan' && whatsappData.value?.status !== 'initializing') {
-      console.log('🔄 Forzando restart para generar QR...')
-      await apiCall('/api/v1/whatsapp/restart', { method: 'POST' })
-      
-      // Esperar un momento y volver a verificar
-      setTimeout(fetchWhatsAppStatus, 2000)
-    }
-    
+    await generateQR()
     showMessage('QR generado correctamente', 'success')
-  } catch (error: any) {
-    console.error('❌ Error generating QR:', error)
-    showMessage(`Error generando QR: ${error.message}`, 'error')
-  } finally {
-    isLoading.value = false
+  } catch (err: any) {
+    showMessage(error.value || 'Error generando QR', 'error')
   }
 }
 
-const refreshQR = async () => {
+const handleRefreshQR = async () => {
   try {
-    isLoading.value = true
-    clearMessage()
-    
-    // Restart para generar nuevo QR
-    await apiCall('/api/v1/whatsapp/restart', { method: 'POST' })
-    
-    // Esperar y actualizar estado
-    setTimeout(fetchWhatsAppStatus, 2000)
-    
+    await refreshQR()
     showMessage('QR actualizado', 'success')
-  } catch (error: any) {
-    console.error('❌ Error refreshing QR:', error)
-    showMessage(`Error actualizando QR: ${error.message}`, 'error')
-  } finally {
-    isLoading.value = false
+  } catch (err: any) {
+    showMessage(error.value || 'Error actualizando QR', 'error')
   }
 }
 
-const disconnectWhatsApp = async () => {
+const handleDisconnect = async () => {
   try {
-    isLoading.value = true
-    const response = await apiCall('/api/v1/whatsapp/disconnect', { method: 'POST' })
-    console.info(response)
-    whatsappData.value = { connected: false, status: 'disconnected' }
+    await disconnectWhatsApp()
     showMessage('WhatsApp desconectado correctamente', 'success')
-  } catch (error: any) {
-    console.error('❌ Error disconnecting WhatsApp:', error)
-    showMessage(`Error desconectando: ${error.message}`, 'error')
-  } finally {
-    isLoading.value = false
+  } catch (err: any) {
+    showMessage(error.value || 'Error desconectando', 'error')
   }
 }
 
@@ -319,14 +228,15 @@ const showMessage = (text: string, type: 'success' | 'error' = 'success') => {
 
 const clearMessage = () => {
   message.value = ''
+  clearError()
 }
 
-const formatDate = (dateString: string) => {
+const formatDate = (dateString?: string) => {
   if (!dateString || dateString === '0001-01-01T00:00:00Z') return 'No disponible'
   return new Date(dateString).toLocaleString()
 }
 
-// 🔥 CORREGIDO: Auto-refresh del estado cada 5 segundos
+// Auto-refresh del estado cada 5 segundos
 let refreshInterval: number | null = null
 
 const startAutoRefresh = () => {
@@ -334,7 +244,7 @@ const startAutoRefresh = () => {
     if (!isLoading.value) {
       fetchWhatsAppStatus()
     }
-  }, 5000) // Cada 5 segundos
+  }, 5000)
 }
 
 const stopAutoRefresh = () => {
@@ -350,8 +260,6 @@ onMounted(() => {
   startAutoRefresh()
 })
 
-// Cleanup on unmount
-import { onUnmounted } from 'vue'
 onUnmounted(() => {
   stopAutoRefresh()
 })
