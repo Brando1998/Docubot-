@@ -15,8 +15,8 @@ const userEmail = computed(() => payload.value?.email || null);
 const userId = computed(() => payload.value?.sub || null);
 
 export function useAuth() {
-  const login = async (email: string, password: string) => {
-    const res = await api.post("/auth/login", { email, password });
+  const login = async (username: string, password: string) => {
+    const res = await api.post("/auth/login", { username, password });
     accessToken.value = res.data.access_token;
     refreshToken.value = res.data.refresh_token;
 

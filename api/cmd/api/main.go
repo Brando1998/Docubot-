@@ -20,6 +20,7 @@ import (
 	"github.com/brando1998/docubot-api/models"
 	"github.com/brando1998/docubot-api/repositories"
 	"github.com/brando1998/docubot-api/routes"
+	"github.com/brando1998/docubot-api/services"
 )
 
 var (
@@ -44,13 +45,18 @@ func initDependencies() (*controllers.WebSocketHub, *gin.Engine) {
 	// 3. Migraciones
 	runMigrations()
 
-	// 4. Inicialización de repositorios
+	// 4. 🔥 NUEVO: Crear usuario administrador por defecto
+	if err := services.EnsureDefaultAdminUser(database.GetDB()); err != nil {
+		log.Fatalf("Failed to ensure default admin user: %v", err)
+	}
+
+	// 5. Inicialización de repositorios
 	initRepositories()
 
-	// 5. WebSocket Hub
+	// 6. WebSocket Hub
 	wsHub := controllers.NewWebSocketHub()
 
-	// 6. Configuración de Gin
+	// 7. Configuración de Gin
 	routerConfig := &routes.RouterConfig{
 		WSHub:    wsHub,
 		Upgrader: &upgrader,
@@ -63,14 +69,19 @@ func initDependencies() (*controllers.WebSocketHub, *gin.Engine) {
 }
 
 func runMigrations() {
+	log.Println("🔄 Ejecutando migraciones de base de datos...")
+
 	err := database.DB.AutoMigrate(
 		&models.Client{},
 		&models.Bot{},
 		&models.WhatsAppSession{},
+		&models.SystemUser{}, // 🔥 NUEVO: Agregar migración del SystemUser
 	)
 	if err != nil {
 		log.Fatalf("Failed to run migrations: %v", err)
 	}
+
+	log.Println("✅ Migraciones completadas exitosamente")
 }
 
 func initRepositories() {
@@ -91,10 +102,15 @@ func getServerPort() string {
 }
 
 func main() {
+	log.Println("🤖 Docubot API - Iniciando...")
+
 	_, router := initDependencies()
 
 	port := getServerPort()
 	log.Printf("🚀 Server starting on port %s", port)
+	log.Printf("📊 Health endpoint: http://localhost:%s/health", port)
+	log.Printf("📚 API docs: http://localhost:%s/docs/index.html", port)
+
 	if err := router.Run(":" + port); err != nil {
 		log.Fatalf("Failed to start server: %v", err)
 	}

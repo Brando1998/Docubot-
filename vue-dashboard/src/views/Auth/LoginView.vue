@@ -5,7 +5,7 @@
       <form @submit.prevent="handleLogin">
         <div class="mb-4">
           <label class="block mb-2 font-medium">Email</label>
-          <input v-model="email" type="email" class="w-full p-2 border rounded-lg" required />
+          <input v-model="username" type="text" class="w-full p-2 border rounded-lg" required />
         </div>
         <div class="mb-6">
           <label class="block mb-2 font-medium">Password</label>
@@ -31,13 +31,13 @@ import { useRouter } from "vue-router";
 const { login } = useAuth();
 const router = useRouter();
 
-const email = ref("");
+const username = ref("");
 const password = ref("");
 const errorMessage = ref("");
 
 const handleLogin = async () => {
   try {
-    await login(email.value, password.value);
+    await login(username.value, password.value);
     router.push("/dashboard"); // ajusta tu ruta privada
   } catch (e) {
     errorMessage.value = "Credenciales inválidas";

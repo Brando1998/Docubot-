@@ -80,6 +80,15 @@ logs-baileys: ## Ver logs de Baileys
 logs-all: ## Ver logs de todos los servicios del proyecto
 	docker compose -f $(COMPOSE_FILE) logs -f
 
+logs-database: ## Ver logs de bases de datos
+	@echo "🗄️  Logs de bases de datos..."
+	docker compose logs -f postgres mongodb
+
+logs-auth: ## Ver logs relacionados con autenticación
+	@echo "🔐 Filtrando logs de autenticación..."
+	docker compose logs -f api | grep -i "auth\|login\|admin\|user"
+
+
 # Estado y salud de servicios
 status: ## Verificar estado de servicios del proyecto
 	@echo "📊 Estado de los servicios de $(PROJECT_NAME):"
@@ -124,6 +133,20 @@ clean-all: ## ⚠️  PELIGROSO: Limpiar TODO el sistema Docker (usar con cuidad
 	@echo "🧹 Limpiando TODO el sistema Docker..."
 	docker system prune -af --volumes
 	@echo "✅ Limpieza completa del sistema"
+
+clean-auth: ## Limpiar datos de autenticación (sessions, tokens)
+	@echo "🧹 Limpiando datos de autenticación..."
+	@echo "⚠️  Esto cerrará todas las sesiones activas"
+	@read -p "¿Continuar? (y/N): " confirm && [ "$$confirm" = "y" ] || exit 0
+	docker exec -it docubot-postgres psql -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-docubot_db} -c "TRUNCATE TABLE system_users CASCADE;"
+	@echo "✅ Datos de autenticación limpiados. Reinicia la API para crear el admin por defecto."
+
+reset-database: ## Resetear completamente las bases de datos
+	@echo "💀 PELIGRO: Esto eliminará TODOS los datos"
+	@read -p "¿Estás seguro? (y/N): " confirm && [ "$$confirm" = "y" ] || exit 0
+	docker compose down -v
+	docker volume rm docubot_postgres_data docubot_mongo_data 2>/dev/null || true
+	@echo "✅ Bases de datos reseteadas"
 
 # Reinicio de servicios
 restart: ## Reiniciar todos los servicios del proyecto
@@ -206,3 +229,38 @@ check-ports: ## Verificar qué puertos están en uso
 	@echo "Puerto 5005 (Rasa):" && (lsof -i :5005 2>/dev/null || echo "  Libre")
 	@echo "Puerto 3001 (Playwright):" && (lsof -i :3001 2>/dev/null || echo "  Libre")
 	@echo "Puerto 3000 (Baileys):" && (lsof -i :3000 2>/dev/null || echo "  Libre")
+
+# ===== GESTIÓN DE USUARIOS ADMIN =====
+create-admin: ## Crear usuario administrador manualmente
+	@echo "🔧 Ejecutando script de creación de admin..."
+	docker exec -it docubot-api /app/scripts/create_admin.sh
+
+reset-admin: ## Resetear contraseña del administrador
+	@echo "🔄 Ejecutando reset de credenciales de admin..."
+	docker exec -it docubot-api sh -c "cd /app && go run ./scripts/reset-admin.go"
+
+list-admins: ## Listar usuarios administradores
+	@echo "📋 Listando usuarios administradores..."
+	docker exec -it docubot-api sh -c "cd /app && go run -c 'database.ConnectPostgres(); db := database.GetDB(); var users []models.SystemUser; db.Where(\"role = ?\", \"admin\").Find(&users); for _, u := range users { fmt.Printf(\"ID: %d | Username: %s | Email: %s | Active: %t\\n\", u.ID, u.Username, u.Email, u.IsActive) }'"
+
+show-admin-credentials: ## Mostrar credenciales por defecto del admin
+	@echo "🔑 Credenciales por defecto del administrador:"
+	@echo "   Username: ${ADMIN_USERNAME:-admin}"
+	@echo "   Email: ${ADMIN_EMAIL:-admin@docubot.local}"
+	@echo "   Password: ${ADMIN_PASSWORD:-DocubotAdmin123!}"
+	@echo ""
+	@echo "⚠️  Estas credenciales se usan solo si no existe un usuario admin en la BD"
+	@echo "💡 Configura ADMIN_USERNAME, ADMIN_EMAIL, ADMIN_PASSWORD en .env para personalizar"
+
+# ===== DESARROLLO CON SHELL DE CONTENEDORES =====
+dev-shell-api: ## Abrir shell en contenedor API para desarrollo
+	@echo "🐚 Abriendo shell en el contenedor API..."
+	@echo "💡 Comandos útiles:"
+	@echo "   - go run ./scripts/reset-admin.go"
+	@echo "   - go run ./cmd/create_user.go"
+	@echo ""
+	docker exec -it docubot-api bash
+
+dev-shell-postgres: ## Conectar a PostgreSQL
+	@echo "🗄️  Conectando a PostgreSQL..."
+	docker exec -it docubot-postgres psql -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-docubot_db}

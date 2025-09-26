@@ -4,6 +4,13 @@
 
 Docubot es un ecosistema de chatbot modular que combina múltiples tecnologías para automatizar procesos documentales en el sector transporte, principalmente a través de WhatsApp.
 
+## 🛠️ Prerrequisitos del Sistema
+
+- Docker 24.0+ y Docker Compose V2
+- Make (Linux/macOS) o WSL2 (Windows)
+- Al menos 8GB RAM disponible
+- Puertos libres: 3000-3002, 5005, 5432, 8080, 27017
+
 ## 🏗️ Arquitectura de Servicios
 
 ### Componentes Principales

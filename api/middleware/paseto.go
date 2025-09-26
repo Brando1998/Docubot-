@@ -19,7 +19,8 @@ var (
 	ErrInvalidToken         = errors.New("token inválido")
 	ErrInvalidTokenFormat   = errors.New("formato de token inválido")
 	ErrUnsupportedTokenType = errors.New("tipo de token no soportado")
-	authDB                  = database.GetDB()
+	// ❌ PROBLEMA: Esta línea también causaba nil pointer
+	// authDB                  = database.GetDB()
 )
 
 // PasetoAuthMiddleware verifica tokens PASETO para usuarios del sistema
@@ -37,16 +38,30 @@ func PasetoAuthMiddleware() gin.HandlerFunc {
 			return
 		}
 
+		// ✅ SOLUCIÓN: Obtener DB directamente en la función
+		db := database.GetDB()
+		if db == nil {
+			c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "error de conexión a base de datos"})
+			return
+		}
+
 		// Verificar si el usuario aún existe
 		var user models.SystemUser
-		if err := authDB.First(&user, payload.UserID).Error; err != nil {
+		if err := db.First(&user, payload.UserID).Error; err != nil {
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "usuario no encontrado"})
+			return
+		}
+
+		// Verificar que el usuario esté activo
+		if !user.IsActive {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "usuario inactivo"})
 			return
 		}
 
 		// Almacenar datos en el contexto
 		c.Set("current_user_id", payload.UserID)
 		c.Set("current_user_role", payload.Role)
+		c.Set("current_user", user) // También almacenar el objeto completo del usuario
 		c.Next()
 	}
 }
@@ -57,7 +72,11 @@ func verifyPasetoToken(token string) (*controllers.PasetoPayload, error) {
 	var payload controllers.PasetoPayload
 
 	secretKey := []byte(os.Getenv("PASETO_SECRET_KEY"))
-	if err := v2.Verify(token, secretKey, &payload, nil); err != nil {
+	if len(secretKey) == 0 {
+		secretKey = []byte("default-secret-key-change-in-production-32-chars")
+	}
+
+	if err := v2.Decrypt(token, secretKey, &payload, nil); err != nil {
 		return nil, ErrInvalidToken
 	}
 
