@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
 	"os"
 	"time"
@@ -102,6 +103,8 @@ func LoginWithPaseto(c *gin.Context) {
 
 // generatePasetoToken genera un nuevo token PASETO
 func generatePasetoToken(userID uint, username, role string) (string, time.Time, error) {
+	fmt.Printf("🔍 DEBUG generatePasetoToken - UserID: %d, Username: %s, Role: %s\n", userID, username, role)
+
 	now := time.Now()
 	expiresAt := now.Add(tokenDuration)
 
@@ -113,22 +116,36 @@ func generatePasetoToken(userID uint, username, role string) (string, time.Time,
 		ExpiresAt: expiresAt,
 	}
 
-	v2 := paseto.NewV2()
-	secretKey := []byte(os.Getenv("PASETO_SECRET_KEY"))
+	fmt.Printf("🔍 DEBUG - Payload creado: %+v\n", payload)
+
+	secretKeyFromEnv := os.Getenv("PASETO_SECRET_KEY")
+	fmt.Printf("🔍 DEBUG - Variable PASETO_SECRET_KEY completa: '%s'\n", secretKeyFromEnv)
+	fmt.Printf("🔍 DEBUG - Longitud exacta: %d caracteres\n", len(secretKeyFromEnv))
+
+	secretKey := []byte(secretKeyFromEnv)
+
+	fmt.Printf("🔍 DEBUG - Longitud después de []byte: %d\n", len(secretKey))
 
 	if len(secretKey) == 0 {
+		fmt.Printf("🔍 DEBUG - Variable vacía, usando clave por defecto\n")
 		secretKey = []byte("default-secret-key-change-in-production-32-chars")
+		fmt.Printf("🔍 DEBUG - Nueva longitud: %d\n", len(secretKey))
 	}
 
 	if len(secretKey) != 32 {
+		fmt.Printf("❌ DEBUG - Longitud de clave incorrecta: %d, se requieren 32\n", len(secretKey))
 		return "", time.Time{}, errors.New("PASETO_SECRET_KEY debe tener exactamente 32 caracteres")
 	}
 
+	fmt.Printf("🔍 DEBUG - Intentando encriptar token...\n")
+	v2 := paseto.NewV2()
 	token, err := v2.Encrypt(secretKey, payload, nil)
 	if err != nil {
+		fmt.Printf("❌ DEBUG - Error en v2.Encrypt: %v\n", err)
 		return "", time.Time{}, err
 	}
 
+	fmt.Printf("✅ DEBUG - Token generado exitosamente, longitud: %d\n", len(token))
 	return token, expiresAt, nil
 }
 

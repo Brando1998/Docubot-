@@ -139,7 +139,7 @@ services:
       - POSTGRES_DB=${POSTGRES_DB:-docubot_db}
       - MONGO_URI=mongodb://${MONGO_USER:-admin}:${MONGO_PASSWORD:-password}@mongodb:27017/${MONGO_DB:-docubot}?authSource=admin
       - MONGO_DB=${MONGO_DB:-docubot}
-      - PASETO_SECRET_KEY=${PASETO_SECRET_KEY:-y7F3q9tPwXkRzZbLmNvQ2s5VpJ8HxYr4KcT6GdA1fUeW0iBoM7nIhS9lOaD5vEj}
+      - PASETO_SECRET_KEY=${PASETO_SECRET_KEY:-y7F3q9tPwXkRzZbLmNvQ2s5VpJ8HxYr4}
       - RASA_URL=http://rasa:5005
       - PLAYWRIGHT_URL=http://playwright:3001
     restart: unless-stopped
