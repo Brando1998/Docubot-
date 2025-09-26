@@ -19,16 +19,14 @@ const (
 	tokenDuration = 24 * time.Hour
 )
 
-// ❌ PROBLEMA: Esta línea causaba el nil pointer porque se ejecuta antes de ConnectPostgres()
-// var authDB = database.GetDB()
-
-// PasetoPayload define la estructura del payload del token PASETO
+// ✅ SIMPLIFICAR: Token solo con lo esencial
 type PasetoPayload struct {
 	UserID    uint      `json:"user_id"`
 	Username  string    `json:"username"`
 	Role      string    `json:"role"`
 	IssuedAt  time.Time `json:"issued_at"`
 	ExpiresAt time.Time `json:"expires_at"`
+	// ✅ NO incluir email - lo obtendremos del endpoint /auth/me
 }
 
 // LoginRequest define la estructura para el request de login
@@ -57,45 +55,39 @@ func LoginWithPaseto(c *gin.Context) {
 		return
 	}
 
-	// ✅ SOLUCIÓN: Obtener DB directamente en la función
 	db := database.GetDB()
 	if db == nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "error de conexión a base de datos"})
 		return
 	}
 
-	// Buscar usuario en la base de datos
 	var user models.SystemUser
 	if err := db.Where("username = ?", req.Username).First(&user).Error; err != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "credenciales inválidas"})
 		return
 	}
 
-	// Verificar si el usuario está activo
 	if !user.IsActive {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "usuario inactivo"})
 		return
 	}
 
-	// Verificar contraseña
 	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(req.Password)); err != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "credenciales inválidas"})
 		return
 	}
 
-	// Actualizar último login
 	now := time.Now()
 	user.LastLogin = &now
 	db.Save(&user)
 
-	// Generar token PASETO
+	// ✅ SIMPLIFICAR: Token sin email
 	token, expiresAt, err := generatePasetoToken(user.ID, user.Username, user.Role)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "error generando token"})
 		return
 	}
 
-	// Respuesta de login exitoso
 	response := LoginResponse{
 		AccessToken: token,
 		ExpiresAt:   expiresAt,
@@ -108,7 +100,7 @@ func LoginWithPaseto(c *gin.Context) {
 	c.JSON(http.StatusOK, response)
 }
 
-// generatePasetoToken genera un token PASETO
+// ✅ SIMPLIFICAR: generatePasetoToken sin email
 func generatePasetoToken(userID uint, username, role string) (string, time.Time, error) {
 	now := time.Now()
 	expiresAt := now.Add(tokenDuration)
@@ -124,9 +116,12 @@ func generatePasetoToken(userID uint, username, role string) (string, time.Time,
 	v2 := paseto.NewV2()
 	secretKey := []byte(os.Getenv("PASETO_SECRET_KEY"))
 
-	// Verificar que la clave secreta esté configurada
 	if len(secretKey) == 0 {
 		secretKey = []byte("default-secret-key-change-in-production-32-chars")
+	}
+
+	if len(secretKey) != 32 {
+		return "", time.Time{}, errors.New("PASETO_SECRET_KEY debe tener exactamente 32 caracteres")
 	}
 
 	token, err := v2.Encrypt(secretKey, payload, nil)
@@ -139,41 +134,36 @@ func generatePasetoToken(userID uint, username, role string) (string, time.Time,
 
 // RefreshPasetoToken maneja la renovación de tokens
 func RefreshPasetoToken(c *gin.Context) {
-	// Obtener token del header
 	authHeader := c.GetHeader("Authorization")
 	if authHeader == "" {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "token no proporcionado"})
 		return
 	}
 
-	// Extraer token
 	tokenString := authHeader
 	if len(authHeader) > 7 && authHeader[:7] == "Bearer " {
 		tokenString = authHeader[7:]
 	}
 
-	// Verificar token actual
 	payload, err := verifyPasetoToken(tokenString)
 	if err != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "token inválido"})
 		return
 	}
 
-	// ✅ SOLUCIÓN: Obtener DB directamente en la función
 	db := database.GetDB()
 	if db == nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "error de conexión a base de datos"})
 		return
 	}
 
-	// Verificar que el usuario aún existe
 	var user models.SystemUser
 	if err := db.First(&user, payload.UserID).Error; err != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "usuario no encontrado"})
 		return
 	}
 
-	// Generar nuevo token
+	// ✅ SIMPLIFICAR: Nuevo token sin email
 	newToken, expiresAt, err := generatePasetoToken(user.ID, user.Username, user.Role)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "error generando nuevo token"})
@@ -186,6 +176,45 @@ func RefreshPasetoToken(c *gin.Context) {
 	})
 }
 
+// ✅ NUEVO: Endpoint para obtener usuario actual del sistema
+func GetCurrentSystemUser(c *gin.Context) {
+	// Obtener ID del usuario desde el middleware
+	userID, exists := c.Get("current_user_id")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Usuario no autenticado"})
+		return
+	}
+
+	id, ok := userID.(uint)
+	if !ok {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error de autenticación"})
+		return
+	}
+
+	db := database.GetDB()
+	if db == nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "error de conexión a base de datos"})
+		return
+	}
+
+	// ✅ CORREGIR: Buscar en SystemUser, no en Client
+	var user models.SystemUser
+	if err := db.First(&user, id).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Usuario no encontrado"})
+		return
+	}
+
+	// ✅ RESPUESTA: Solo datos necesarios, sin password
+	c.JSON(http.StatusOK, gin.H{
+		"id":         user.ID,
+		"username":   user.Username,
+		"email":      user.Email,
+		"role":       user.Role,
+		"is_active":  user.IsActive,
+		"last_login": user.LastLogin,
+	})
+}
+
 // verifyPasetoToken verifica y decodifica el token
 func verifyPasetoToken(token string) (*PasetoPayload, error) {
 	v2 := paseto.NewV2()
@@ -194,6 +223,10 @@ func verifyPasetoToken(token string) (*PasetoPayload, error) {
 	secretKey := []byte(os.Getenv("PASETO_SECRET_KEY"))
 	if len(secretKey) == 0 {
 		secretKey = []byte("default-secret-key-change-in-production-32-chars")
+	}
+
+	if len(secretKey) != 32 {
+		return nil, errors.New("PASETO_SECRET_KEY debe tener exactamente 32 caracteres")
 	}
 
 	if err := v2.Decrypt(token, secretKey, &payload, nil); err != nil {

@@ -54,6 +54,7 @@ func SetupRoutes(r *gin.Engine, config *RouterConfig) {
 	{
 		authGroup.POST("/login", controllers.LoginWithPaseto)
 		authGroup.POST("/refresh", controllers.RefreshPasetoToken)
+		authGroup.GET("/me", middleware.PasetoAuthMiddleware(), controllers.GetCurrentSystemUser)
 	}
 
 	// =============================================
