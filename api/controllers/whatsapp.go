@@ -1,3 +1,4 @@
+// api/controllers/whatsapp.go - Versión corregida y completa
 package controllers
 
 import (
@@ -11,14 +12,20 @@ import (
 
 // WhatsAppQRResponse estructura para la respuesta del QR
 type WhatsAppQRResponse struct {
-	Status    string `json:"status"`
-	Message   string `json:"message"`
-	QRCode    string `json:"qr_code,omitempty"`
-	QRImage   string `json:"qr_image,omitempty"`
-	Connected bool   `json:"connected"`
+	Status      string `json:"status"`
+	Message     string `json:"message"`
+	QRCode      string `json:"qr_code,omitempty"`
+	QRImage     string `json:"qr_image,omitempty"`
+	Connected   bool   `json:"connected"`
+	SessionInfo struct {
+		Number   string    `json:"number,omitempty"`
+		Name     string    `json:"name,omitempty"`
+		Avatar   string    `json:"avatar,omitempty"`
+		LastSeen time.Time `json:"last_seen,omitempty"`
+	} `json:"session_info,omitempty"`
 }
 
-// WhatsAppStatusResponse estructura para el estado de la sesión
+// WhatsAppStatusResponse estructura para el estado detallado
 type WhatsAppStatusResponse struct {
 	Status      string    `json:"status"`
 	Message     string    `json:"message,omitempty"`
@@ -31,137 +38,163 @@ type WhatsAppStatusResponse struct {
 	} `json:"session_info"`
 }
 
-// BaileysStatusRequest estructura para consultar estado a Baileys
-type BaileysStatusRequest struct {
+// SendMessageRequest estructura para enviar mensajes
+type SendMessageRequest struct {
+	To      string `json:"to" binding:"required"`
+	Message string `json:"message" binding:"required"`
+}
+
+// BaileysRequest estructura para comunicación con Baileys
+type BaileysRequest struct {
 	Action string `json:"action"`
 }
 
-// GetWhatsAppQR obtiene el código QR de WhatsApp desde Baileys
-// @Summary Obtener código QR de WhatsApp
-// @Description Retorna el código QR para conectar WhatsApp o el estado de conexión actual
+// GetWhatsAppQR obtiene el código QR o estado de sesión
+// @Summary Obtener QR de WhatsApp o estado de sesión
+// @Description Retorna el código QR para conectar WhatsApp o información de sesión activa
 // @Tags whatsapp
 // @Produce json
 // @Success 200 {object} WhatsAppQRResponse
 // @Failure 500 {object} map[string]string
-// @Router /whatsapp/qr [get]
+// @Router /api/v1/whatsapp/qr [get]
 func GetWhatsAppQR(c *gin.Context) {
 	// URL del servicio Baileys
 	baileysURL := "http://baileys:3000/qr" // Ajusta según tu configuración
 
-	// Hacer solicitud a Baileys para obtener QR
+	// Hacer solicitud a Baileys para obtener QR o estado
 	resp, err := http.Get(baileysURL)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
-			"error":   "No se pudo conectar con el servicio de WhatsApp",
+			"error":   "Error conectando con servicio de WhatsApp",
 			"details": err.Error(),
 		})
 		return
 	}
 	defer resp.Body.Close()
 
-	var qrResponse WhatsAppQRResponse
-	if err := json.NewDecoder(resp.Body).Decode(&qrResponse); err != nil {
-		// Si Baileys no responde con JSON esperado, verificar estado manualmente
-		status := checkBaileysConnection()
-		if status.Connected {
-			c.JSON(http.StatusOK, WhatsAppQRResponse{
-				Status:    "connected",
-				Message:   "WhatsApp ya está conectado",
-				Connected: true,
-			})
-			return
-		}
-
+	if resp.StatusCode != http.StatusOK {
 		c.JSON(http.StatusInternalServerError, gin.H{
-			"error":   "Error al procesar respuesta del servicio WhatsApp",
+			"error": "Error en el servicio de WhatsApp",
+		})
+		return
+	}
+
+	// Decodificar respuesta de Baileys
+	var baileysResponse WhatsAppQRResponse
+	if err := json.NewDecoder(resp.Body).Decode(&baileysResponse); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error":   "Error procesando respuesta de WhatsApp",
 			"details": err.Error(),
 		})
 		return
 	}
 
-	c.JSON(http.StatusOK, qrResponse)
+	// Retornar respuesta de Baileys tal como la recibimos
+	c.JSON(http.StatusOK, baileysResponse)
 }
 
-// GetSessionStatus obtiene el estado actual de la sesión de WhatsApp
-// @Summary Obtener estado de sesión WhatsApp
-// @Description Retorna información sobre el estado de la conexión de WhatsApp
+// DisconnectWhatsApp termina la sesión actual
+// @Summary Desconectar sesión de WhatsApp
+// @Description Termina la sesión activa de WhatsApp
+// @Tags whatsapp
+// @Produce json
+// @Success 200 {object} map[string]interface{}
+// @Failure 500 {object} map[string]string
+// @Router /api/v1/whatsapp/disconnect [post]
+func DisconnectWhatsApp(c *gin.Context) {
+	// URL del servicio Baileys para desconectar
+	baileysURL := "http://baileys:3000/disconnect"
+
+	// Hacer solicitud POST a Baileys
+	resp, err := http.Post(baileysURL, "application/json", nil)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error":   "Error conectando con servicio de WhatsApp",
+			"details": err.Error(),
+		})
+		return
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "Error desconectando WhatsApp",
+		})
+		return
+	}
+
+	// Decodificar respuesta de Baileys
+	var baileysResponse map[string]interface{}
+	if err := json.NewDecoder(resp.Body).Decode(&baileysResponse); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error":   "Error procesando respuesta",
+			"details": err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, baileysResponse)
+}
+
+// GetSessionStatus obtiene el estado detallado de la sesión
+// @Summary Obtener estado detallado de sesión
+// @Description Retorna información detallada del estado de la sesión de WhatsApp
 // @Tags whatsapp
 // @Produce json
 // @Success 200 {object} WhatsAppStatusResponse
 // @Failure 500 {object} map[string]string
-// @Router /whatsapp/status [get]
+// @Router /api/v1/whatsapp/status [get]
 func GetSessionStatus(c *gin.Context) {
-	status := checkBaileysConnection()
-	c.JSON(http.StatusOK, status)
-}
+	// URL del servicio Baileys para obtener estado
+	baileysURL := "http://baileys:3000/status"
 
-// checkBaileysConnection verifica el estado de conexión con Baileys
-func checkBaileysConnection() WhatsAppStatusResponse {
-	// Intentar conectar con el endpoint de estado de Baileys
-	baileysStatusURL := "http://baileys:3000/status"
-
-	client := &http.Client{Timeout: 5 * time.Second}
-	resp, err := client.Get(baileysStatusURL)
-
+	resp, err := http.Get(baileysURL)
 	if err != nil {
-		return WhatsAppStatusResponse{
-			Status:    "disconnected",
-			Connected: false,
-			Message:   "No se pudo conectar con el servicio Baileys",
-		}
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error":   "Error conectando con servicio de WhatsApp",
+			"details": err.Error(),
+		})
+		return
 	}
 	defer resp.Body.Close()
 
-	var statusResponse struct {
-		Status  string `json:"status"`
-		Uptime  int    `json:"uptime"`
-		BotID   string `json:"bot_id,omitempty"`
-		BotName string `json:"bot_name,omitempty"`
+	if resp.StatusCode != http.StatusOK {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "Error obteniendo estado de WhatsApp",
+		})
+		return
 	}
 
-	if err := json.NewDecoder(resp.Body).Decode(&statusResponse); err != nil {
-		return WhatsAppStatusResponse{
-			Status:    "unknown",
-			Connected: false,
-			Message:   "Error al leer estado del servicio",
-		}
+	var baileysResponse WhatsAppStatusResponse
+	if err := json.NewDecoder(resp.Body).Decode(&baileysResponse); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error":   "Error procesando respuesta",
+			"details": err.Error(),
+		})
+		return
 	}
 
-	// Determinar si está conectado basado en la respuesta
-	connected := statusResponse.Status == "running" && statusResponse.BotID != ""
-
-	response := WhatsAppStatusResponse{
-		Status:    statusResponse.Status,
-		Connected: connected,
-		BotNumber: statusResponse.BotID,
-		LastSeen:  time.Now(),
-	}
-
-	if connected {
-		response.SessionInfo.Name = statusResponse.BotName
-	}
-
-	return response
+	c.JSON(http.StatusOK, baileysResponse)
 }
 
-// SendWhatsAppMessage envía un mensaje a través de WhatsApp (para administradores)
+// SendWhatsAppMessage envía un mensaje por WhatsApp
 // @Summary Enviar mensaje por WhatsApp
-// @Description Envía un mensaje a un número específico a través de WhatsApp
+// @Description Envía un mensaje de texto a un número específico
 // @Tags whatsapp
 // @Accept json
 // @Produce json
-// @Param message body map[string]string true "Datos del mensaje"
-// @Success 200 {object} map[string]string
+// @Param message body SendMessageRequest true "Datos del mensaje"
+// @Success 200 {object} map[string]interface{}
 // @Failure 400 {object} map[string]string
-// @Router /whatsapp/send [post]
+// @Failure 500 {object} map[string]string
+// @Router /api/v1/whatsapp/send [post]
 func SendWhatsAppMessage(c *gin.Context) {
-	var request struct {
-		To      string `json:"to" binding:"required"`
-		Message string `json:"message" binding:"required"`
-	}
-
+	var request SendMessageRequest
 	if err := c.ShouldBindJSON(&request); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Datos inválidos"})
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error":   "Datos inválidos",
+			"details": err.Error(),
+		})
 		return
 	}
 
@@ -173,7 +206,9 @@ func SendWhatsAppMessage(c *gin.Context) {
 
 	jsonData, err := json.Marshal(messagePayload)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error al preparar mensaje"})
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "Error preparando mensaje",
+		})
 		return
 	}
 
@@ -182,7 +217,7 @@ func SendWhatsAppMessage(c *gin.Context) {
 	resp, err := http.Post(baileysURL, "application/json", bytes.NewBuffer(jsonData))
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
-			"error":   "Error al enviar mensaje",
+			"error":   "Error enviando mensaje",
 			"details": err.Error(),
 		})
 		return
@@ -190,37 +225,102 @@ func SendWhatsAppMessage(c *gin.Context) {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error en el servicio de WhatsApp"})
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "Error en el servicio de WhatsApp",
+		})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"message": "Mensaje enviado correctamente",
-		"to":      request.To,
-	})
+	var baileysResponse map[string]interface{}
+	if err := json.NewDecoder(resp.Body).Decode(&baileysResponse); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error":   "Error procesando respuesta",
+			"details": err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, baileysResponse)
 }
 
-// CreateWhatsAppSession crea una nueva sesión de WhatsApp (placeholder para futuras funcionalidades)
-func CreateWhatsAppSession(c *gin.Context) {
-	c.JSON(http.StatusNotImplemented, gin.H{
-		"error":   "Funcionalidad no implementada aún",
-		"message": "La creación de sesiones se maneja automáticamente por Baileys",
-	})
-}
-
-// GetWhatsAppSession obtiene información de una sesión específica (placeholder)
+// GetWhatsAppSession obtiene información de una sesión específica
+// @Summary Obtener sesión de WhatsApp
+// @Description Obtiene información de una sesión específica de WhatsApp
+// @Tags whatsapp
+// @Produce json
+// @Param session_id path string true "ID de la sesión"
+// @Success 200 {object} map[string]interface{}
+// @Failure 400 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Router /api/v1/whatsapp/session/{session_id} [get]
 func GetWhatsAppSession(c *gin.Context) {
 	sessionID := c.Param("session_id")
 	if sessionID == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "ID de sesión requerido"})
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "ID de sesión requerido",
+		})
 		return
 	}
 
-	// Por ahora retornamos el estado general
+	// Por ahora retornamos el estado general ya que Baileys maneja una sola sesión
 	status := checkBaileysConnection()
 	c.JSON(http.StatusOK, gin.H{
 		"session_id": sessionID,
 		"status":     status,
 	})
+}
+
+// CreateWhatsAppSession crea una nueva sesión de WhatsApp
+// @Summary Crear sesión de WhatsApp
+// @Description Crea una nueva sesión de WhatsApp (reinicia Baileys)
+// @Tags whatsapp
+// @Produce json
+// @Success 200 {object} map[string]interface{}
+// @Failure 500 {object} map[string]string
+// @Router /api/v1/whatsapp/session [post]
+func CreateWhatsAppSession(c *gin.Context) {
+	// URL para reiniciar/crear sesión en Baileys
+	baileysURL := "http://baileys:3000/restart" // Endpoint que deberías implementar en Baileys
+
+	resp, err := http.Post(baileysURL, "application/json", nil)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error":   "Error creando sesión",
+			"details": err.Error(),
+		})
+		return
+	}
+	defer resp.Body.Close()
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "Sesión creada/reiniciada correctamente",
+		"status":  "restarting",
+	})
+}
+
+// Funciones auxiliares
+
+func checkBaileysConnection() map[string]interface{} {
+	// Verificar conexión con Baileys vía HTTP
+	baileysURL := "http://baileys:3000/health"
+
+	resp, err := http.Get(baileysURL)
+	if err != nil {
+		return map[string]interface{}{
+			"connected": false,
+			"error":     err.Error(),
+		}
+	}
+	defer resp.Body.Close()
+
+	var healthResponse map[string]interface{}
+	if err := json.NewDecoder(resp.Body).Decode(&healthResponse); err != nil {
+		return map[string]interface{}{
+			"connected": false,
+			"error":     "Error parsing response",
+		}
+	}
+
+	return healthResponse
 }

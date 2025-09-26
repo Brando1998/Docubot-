@@ -1,3 +1,4 @@
+// api/routes/routes.go - Versión actualizada con endpoints WhatsApp
 package routes
 
 import (
@@ -68,45 +69,44 @@ func SetupRoutes(r *gin.Engine, config *RouterConfig) {
 		// --------------------------
 		userGroup := api.Group("/users")
 		{
-			userGroup.GET("/me", controllers.GetCurrentUser)                // Usuario actual
-			userGroup.POST("", controllers.CreateClient)                    // Crear usuario
-			userGroup.GET("/id/:id", controllers.GetClientByID)             // Obtener por ID
-			userGroup.GET("/phone/:phone", controllers.GetClientByPhone)    // Obtener por teléfono
-			userGroup.POST("/get-or-create", controllers.GetOrCreateClient) // Obtener o crear
+			userGroup.GET("/me", controllers.GetCurrentUser)
+			userGroup.POST("", controllers.CreateClient)
+			userGroup.GET("/id/:id", controllers.GetClientByID)
+			userGroup.GET("/phone/:phone", controllers.GetClientByPhone)
+			userGroup.POST("/get-or-create", controllers.GetOrCreateClient)
 		}
 
-		//--------------------------
-		//Conversaciones (ya implementado)
-		//--------------------------
-		// convGroup := api.Group("/conversations")
-		// {
-		// 	// Nota: Los mensajes se manejan via WebSocket
-		// 	// Aquí se pueden agregar endpoints para historial
-		// 	convGroup.GET("/history/:client_id", controllers.GetConversationHistory)
-		// 	convGroup.GET("/recent", controllers.GetRecentConversations)
-		// }
-
 		// --------------------------
-		// WhatsApp (administración y dashboard)
+		// WhatsApp (Dashboard Management)
 		// --------------------------
 		whatsappGroup := api.Group("/whatsapp")
 		{
-			// Endpoints para dashboard (sin restricción admin)
-			whatsappGroup.GET("/qr", controllers.GetWhatsAppQR)
-			whatsappGroup.GET("/status", controllers.GetSessionStatus)
+			// 🆕 Endpoints principales para el dashboard
+			whatsappGroup.GET("/qr", controllers.GetWhatsAppQR)               // Obtener QR o estado
+			whatsappGroup.POST("/disconnect", controllers.DisconnectWhatsApp) // Finalizar sesión
+			whatsappGroup.GET("/status", controllers.GetSessionStatus)        // Estado detallado
 
-			// Endpoints para administradores
-			whatsappGroup.POST("/send", controllers.SendWhatsAppMessage)
-			whatsappGroup.GET("/session/:session_id", controllers.GetWhatsAppSession)
-			whatsappGroup.POST("/session", controllers.CreateWhatsAppSession)
+			// Endpoints para manejo de mensajes y sesiones
+			whatsappGroup.POST("/send", controllers.SendWhatsAppMessage)              // Enviar mensaje
+			whatsappGroup.GET("/session/:session_id", controllers.GetWhatsAppSession) // Obtener sesión específica
+			whatsappGroup.POST("/session", controllers.CreateWhatsAppSession)         // Crear nueva sesión
 		}
+
+		// --------------------------
+		// Conversaciones (ya implementado)
+		// --------------------------
+		// convGroup := api.Group("/conversations")
+		// {
+		// 	convGroup.GET("/history/:client_id", controllers.GetConversationHistory)
+		// 	convGroup.GET("/recent", controllers.GetRecentConversations)
+		// }
 	}
 
 	// =============================================
 	// Rutas de Administración (futuro)
 	// =============================================
 	// admin := r.Group("/admin")
-	// admin.Use(middleware.PasetoAdminMiddleware()) // Middleware para admin
+	// admin.Use(middleware.PasetoAdminMiddleware())
 	// {
 	// 	admin.GET("/metrics", controllers.GetMetrics)
 	// 	admin.GET("/users", controllers.GetAllUsers)
